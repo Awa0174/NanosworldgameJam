@@ -16,6 +16,29 @@ DeathBox.Arena = {
 local Arena = DeathBox.Arena
 local Cfg = DeathBox.Config.ARENA
 
+-- Prueft beim Laden, ob alle noetigen Einstellungen in Shared/Config.lua stehen.
+-- Fehlt etwas (z. B. weil eine alte Config.lua behalten wurde), gibt es eine klare Meldung
+-- statt eines Absturzes mitten im Aufbau.
+local REQUIRED_SETTINGS = {
+	"CENTER", "FLOOR_SIZE", "FLOOR_THICKNESS", "WALL_HEIGHT", "WALL_THICKNESS", "FLOOR_COLOR", "WALL_COLOR",
+	"TABLE_MESH", "TABLE_SCALE", "CHAIR_MESH", "CHAIR_RADIUS", "CHAIR_YAW_OFFSET",
+	"SIT_ANIMATION", "SIT_HEIGHT", "SIT_FORWARD",
+}
+
+local function ValidateConfig()
+	local missing = {}
+	for _, key in ipairs(REQUIRED_SETTINGS) do
+		if (Cfg[key] == nil) then
+			table.insert(missing, key)
+		end
+	end
+	if (#missing > 0) then
+		Console.Error("[DeathBox] In Shared/Config.lua fehlen unter ARENA: %s – ist die Config.lua veraltet?", table.concat(missing, ", "))
+		return false
+	end
+	return true
+end
+
 -- SM_Cube ist 100 x 100 x 100 cm gross. Mit SetScale wird daraus jede Quaderform.
 local CUBE_SIZE = 100
 
@@ -71,6 +94,7 @@ end
 
 function Arena.Build()
 	if (Arena.built) then return end
+	if (not ValidateConfig()) then return end
 	BuildFloorAndWalls()
 	BuildTableAndChairs()
 	Arena.built = true

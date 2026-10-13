@@ -34,7 +34,7 @@ DeathBox.Config = {
 		TABLE_SCALE = Vector(2, 2, 1),  -- Tisch breiter machen (X/Y), Hoehe (Z) bleibt
 		CHAIR_MESH = "nanos-world::SM_WoodenChair",
 		CHAIR_RADIUS = 240,             -- Abstand Stuhl <-> Tischmitte in cm (mit dem Tisch mitwachsen lassen)
-		CHAIR_YAW_OFFSET = 90,          -- Drehung des Stuhl-Modells, damit die Sitzflaeche zum Tisch zeigt
+		CHAIR_YAW_OFFSET = 270,         -- Drehung des Stuhl-Modells, damit die Sitzflaeche zum Tisch zeigt (im Spiel getestet)
 
 		-- Sitzen: Position der Figur relativ zum Stuhl. Im Spiel mit /sitpos <hoehe> <vor> feinjustieren.
 		SIT_ANIMATION = "nanos-world::A_Mannequin_Sit_Bench",

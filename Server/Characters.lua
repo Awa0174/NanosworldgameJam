@@ -5,9 +5,18 @@ DeathBox.Characters = {}
 
 local Characters = DeathBox.Characters
 
--- Spawnpunkt in der Arena (statt auf der Map)
+-- Spawnpunkt in der Arena. Falls die Arena nicht gebaut werden konnte: Spawnpunkt der Map als Notloesung.
 local function GetSpawnLocation()
-	return DeathBox.Arena.GetSpawnLocation()
+	if (DeathBox.Arena.built) then
+		return DeathBox.Arena.GetSpawnLocation()
+	end
+
+	local spawn_points = Server.GetMapSpawnPoints()
+	if (#spawn_points > 0) then
+		local point = spawn_points[math.random(#spawn_points)]
+		return point.location, point.rotation
+	end
+	return Vector(0, 0, 100), Rotator()
 end
 
 -- Gibt dem Spieler eine lebende Figur: neu erzeugen, wiederbeleben oder vorhandene lassen
@@ -52,6 +61,7 @@ function Characters.SitOnChair(player, chair_index)
 
 	local character = player:GetControlledCharacter()
 	if (not character or character:IsDead()) then return end
+	if (not DeathBox.Arena.built) then return end   -- ohne Arena keine Stuehle
 
 	local location, rotation = DeathBox.Arena.GetChairSitTransform(chair_index)
 
