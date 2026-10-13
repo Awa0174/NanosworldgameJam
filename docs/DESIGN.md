@@ -1,140 +1,216 @@
-# Design-Dokument – [SPIELNAME]
+# Design-Dokument – The Last Séance
 
-> Arbeitstitel: **DeathBox** (Ordner-/Package-Name `deathbox`).
-> Inspiriert vom Spielprinzip von „Death in the Box“ (Roblox). Name, Figuren, Texte und Grafiken sind eigene Inhalte.
-> Platzhalter stehen in `[ECKIGEN KLAMMERN]` und werden später ersetzt.
+> **Arbeitstitel:** *The Last Séance* (Package-Name bleibt `deathbox`)
+> **Jam:** nanos world Halloween Game Jam 2026 – Abgabe **23. Oktober 2026, 23:59 UTC**, öffentlicher Playtest 30. Oktober – 1. November
+> **Inspiration:** das Spielprinzip von *Death in the Box* (Roblox). Setting, Host, Rituale, Karten, Texte und Präsentation sind eigene Inhalte.
+> **Sprache:** Alle Texte im Spiel auf **Englisch** (internationales Playtest-Publikum). Code-Kommentare und Doku auf Deutsch.
 
-## 1. Kurzbeschreibung
+---
 
-[KURZBESCHREIBUNG – 1–2 Sätze, z. B.: „Bis zu 8 Spieler sitzen um einen Tisch. [SPIELLEITER] reicht reihum eine Pistole weiter, die nicht immer feuert. Wer zuletzt übrig ist, gewinnt.“]
+## 1. Vision
 
-## 2. Setting & Identität
+Bis zu 8 Spieler sitzen um einen Séance-Tisch in einem dunklen Salon. **Madame**, ein Medium, das selbst schon halb Geist ist, leitet die Sitzung. Sie wählt Spieler aus und beschwört **Rituale**: Mal entscheidet Glück, mal Reaktion, mal Vertrauen. Tarotkarten geben jedem einen Ausweg, aber nicht für immer. Wer zuletzt noch am Tisch sitzt, verlässt die Séance lebend.
 
-| Element | Inhalt |
+**Leitsatz:** *Wir bauen keine Inhalte, sondern Situationen, in denen Spieler füreinander zum Inhalt werden.*
+
+### Was wir vom Vorbild übernehmen (die Prinzipien)
+- Ein Host gibt dem Zufall ein Gesicht („Madame hat mich gewählt“, nicht „der Algorithmus“).
+- Spannung entsteht vor dem Ereignis: Auswahl, Pause, Spotlight.
+- Entscheidungen sind öffentlich, alle schauen zu.
+- Kurze Rituale mit klarer Aufgabe, Rhythmuswechsel zwischen Glück, Reaktion und Vertrauen.
+- Karten geben dem Zufall eine strategische Ebene.
+
+### Was wir bewusst anders machen
+- **Mehr Kontrolle statt reinem RNG:** Der Revolver hat eine sichtbare Trommel. Die Wahrscheinlichkeit steigt nachvollziehbar. Wer zählt, entscheidet besser.
+- **Jede Gefahr hat eine Antwort:** Zu jedem Ritual gibt es mindestens eine Karte, die hilft.
+- **Lesbarkeit vor Menge:** 3 Rituale, jedes mit eindeutiger Anzeige und einem einzigen Input.
+- Keine Monetarisierung, kein Glücksrad, kein FOMO.
+
+---
+
+## 2. Setting & Präsentation
+
+| Element | Umsetzung |
 |---|---|
-| Spielname | [SPIELNAME] |
-| Spielleiter | [NAME DES SPIELLEITERS] – [KURZE BESCHREIBUNG] |
-| Ort | [ORT, z. B. Keller, Zirkuszelt, Zugabteil] |
-| Stimmung | [STIMMUNG, z. B. düster, schwarzhumorig] |
+| Ort | Geschlossener, dunkler Salon (Decke, Wände, Teppich), runder Tisch in der Mitte |
+| Licht | Nur Kerzen bzw. Öllampen auf dem Tisch + ein Spotlight auf den gewählten Spieler |
+| Host | **Madame**: Figur am Kopfende bzw. als Stimme/Text. Kommentiert jedes Ereignis |
+| Ton | Leises Ambient, Leerklick (`A_Pistol_Dry`), Schuss, Lachen bei Tod |
+| Palette | Schwarz, warmes Kerzen-Orange, tiefes Violett für Geister-Effekte |
 
-## 3. Spielregeln (MVP)
+**Madames Sprechweise (Beispiele, Englisch):**
+- *„The spirits have chosen… **Awa**.“*
+- *„Click. The dead are patient.“*
+- *„The candle goes out. Goodbye, **Max**.“*
 
-### 3.1 Spieler
-- Mindestens **2** Spieler, maximal **8** (einstellbar in `Shared/Config.lua`).
-- Ab 2 Spielern startet automatisch ein Countdown von 10 Sekunden.
+---
 
-### 3.2 Startaufstellung
-- Zu Beginn jeder Partie wird die Reihenfolge der Spieler **zufällig** gemischt.
-- Diese Reihenfolge entspricht den Sitzplätzen am Tisch.
+## 3. Spielablauf
 
-### 3.3 Ablauf einer Runde
-1. Es ist **reihum im Uhrzeigersinn** jeweils ein Spieler dran.
-2. Der Spieler am Zug bekommt die **Pistole**.
-3. Die Pistole **zündet nicht immer**:
-   - Chance auf Schuss: **1 zu 6** (einstellbar)
-   - Bei Schuss: Der Spieler scheidet aus.
-   - Kein Schuss: Der Spieler überlebt, der nächste ist dran.
-4. Ausgeschiedene Spieler werden übersprungen.
+```
+LOBBY ──(≥2 Spieler, Countdown)──> SÉANCE
+SÉANCE:  Madame wählt Ritual + Spieler ──> Spotlight ──> Ritual ──> Auflösung ──> nächstes Ritual
+SÉANCE ──(1 Spieler übrig)──> ENDE (Sieger) ──> LOBBY
+```
 
-> MVP: Der Spieler schießt auf **sich selbst** (reines Glück, keine Eingabe nötig).
-> Später möglich: Ziel wählen (Strategie) – braucht eine Eingabe vom Client.
+- **Sitzordnung:** zufällig, Reihenfolge im Uhrzeigersinn.
+- **Auswahl:** Madame geht reihum (Uhrzeigersinn). Welches Ritual kommt, ist zufällig gewichtet, nie zweimal dasselbe hintereinander.
+- **Ausscheiden:** Spieler stirbt am Tisch, Kerze vor ihm erlischt. Danach Zuschauer.
+- **Sonderfälle:** Verlassen = ausgeschieden. Wer während einer Séance joint, wartet. Bei Zeitüberschreitung gibt es immer ein festes Standardverhalten, damit nichts hängenbleibt.
 
-### 3.4 Karten
-- Für den MVP gibt es **eine** Karte: **[KARTENNAME]** (intern `shield`)
-- Wirkung: rettet einmal vor einem Schuss, wird **automatisch** verbraucht
-- Erhalt: jeder Spieler startet mit einer (`Config.START_CARDS`)
+---
 
-### 3.5 Spielende
-- Sobald nur noch **ein** Spieler lebt, hat er gewonnen.
-- Nach 10 Sekunden geht es zurück in die Lobby, alle werden wiederbelebt.
+## 4. Rituale (Jam-Umfang: 3)
 
-### 3.6 Sonderfälle
-- Spieler verlässt das Spiel während der Partie → zählt wie gestorben (ausgeschieden).
-- Spieler am Zug verlässt das Spiel → sein Zug wird abgebrochen, der nächste ist dran.
-- Nur noch 1 Spieler übrig → er gewinnt, Partie endet.
-- Spieler joint während einer Partie → wartet, bis die Partie zu Ende ist, und spielt ab der nächsten mit.
-- Spieler geht während des Countdowns und es sind zu wenige → Countdown wird abgebrochen.
-- Mehr Spieler als Plätze → die übrigen schauen zu.
+### 4.1 The Chamber (Revolver) – *Glück + Taktik*
+- Ein Revolver mit **6 Kammern und 1 Kugel**. Die Trommel bleibt zwischen den Zügen bestehen. Die Chance steigt sichtbar: 1/6 → 1/5 → … → 1/1.
+- Der gewählte Spieler **wählt ein Ziel** (einen anderen lebenden Spieler) und drückt ab.
+- **Zeitlimit 10 s:** Wer nicht wählt, richtet die Waffe auf sich selbst.
+- Nach einem Schuss wird neu geladen (wieder 1/6).
+- **UI:** Trommel mit verbleibenden Kammern, Zielauswahl per Klick auf Spielernamen.
 
-### 3.7 Spielort (Arena)
-- Eigene Fläche **20 m × 20 m** mit 4 m hohen Wänden, **200 m über der Map** – funktioniert auf jeder Map.
-- In der Mitte ein vergrößerter Tisch (2× breiter), darum **8 Stühle** (einer pro möglichem Platz), Platz 1 bei 0°, dann im Uhrzeigersinn.
-- Lobby: Spieler spawnen frei im Raum und können herumlaufen.
-- Partie: Jeder Spieler **sitzt auf seinem Stuhl** (Sitz-Animation, Blick zum Tisch, Bewegung gesperrt). Bei weniger als 8 Spielern werden die Plätze gleichmäßig verteilt.
-- Wer ausscheidet, steht auf (Schwerkraft an) und stirbt.
-- Alle Maße und Meshes stehen in `Shared/Config.lua` unter `ARENA`.
+### 4.2 The Pact (Vertrauen / Verrat) – *Social*
+- Madame wählt **zwei Spieler**. Beide haben **20 s Redezeit** (Chat/Voice) und dann **8 s**, um geheim zu wählen: **Keep** oder **Break**.
 
-## 4. Umfang in Stufen
-
-| Stufe | Inhalt | Fertig, wenn … |
+| A | B | Ergebnis |
 |---|---|---|
-| **MVP** | Rundenschleife, Spielleiter wählt Spieler, Pistole, Ausscheiden, Sieger | Ein komplettes Spiel funktioniert, wenn auch nur im Chat |
-| **Kern** | Karten in der Hand, UI zum Ausspielen | Spieler treffen echte Entscheidungen |
-| **Atmosphäre** | Tisch, Sitzplätze, Kamera, Spielleiter-Figur, Sounds, Licht | Es fühlt sich wie ein Spiel an |
-| **Bonus** | Ereignisse, mehr Karten, Statistiken | Nur wenn Zeit übrig ist |
+| Keep | Keep | Beide bekommen eine Tarotkarte |
+| Break | Keep | A bekommt zwei Karten, B verliert eine Karte |
+| Break | Break | Beide verlieren **alle** Karten |
 
-Beim Jam gilt: **Lieber eine fertige Stufe abgeben als drei halbe.**
+- Keine Wahl gilt als **Keep**.
+- Das Ergebnis wird gleichzeitig aufgedeckt, für alle sichtbar.
 
-## 5. Architektur
+### 4.3 Possession (Reaktion) – *Skill*
+- Ein Geist fährt in den gewählten Spieler. Es erscheint eine Folge von **5 Tasten** (Pfeile/WASD), eine nach der anderen, mit kürzer werdendem Zeitfenster.
+- Eine falsche Taste oder zu langsam bedeutet, dass der Geist gewinnt und der Spieler ausscheidet (Karten können retten).
+- Die Tastenfolge erzeugt der Server, und der Server prüft auch. Der Client meldet nur die gedrückten Tasten mit Zeitstempel-Toleranz.
 
-### 5.1 Wer macht was
-- **Server:** entscheidet alles (Zustand, Würfe, Kartenwirkungen) und prüft jede Eingabe vom Client. Sonst kann ein Spieler einfach „ich spiele Schild“ senden, obwohl er keins hat.
-- **Client:** zeigt nur an (UI, Kamera, Effekte) und schickt Wünsche an den Server.
-- **Shared:** gemeinsame Daten, z. B. Kartendefinitionen und Konfiguration.
+---
 
-### 5.2 Dateien
+## 5. Tarotkarten (Jam-Umfang: 4)
+
+Jeder Spieler startet mit **1 zufälligen Karte**, maximal **3 auf der Hand**. Weitere Karten gibt es über *The Pact*.
+
+| Karte | Typ | Wirkung |
+|---|---|---|
+| **The Ward** | automatisch | Verhindert einmal den eigenen Tod. Wird verbraucht. |
+| **The Mirror** | automatisch | Wird man in *The Chamber* zum Ziel, wird der Schuss auf den Schützen umgelenkt. Wird verbraucht. |
+| **The Moon** | ausspielbar | Zeigt dir (nur dir), ob die nächste Kammer geladen ist. |
+| **The Hermit** | ausspielbar | Wenn du gewählt wirst: Das Ritual geht an den nächsten Spieler weiter. |
+
+- **Typen:** *automatisch* = greift von selbst, wenn die Bedingung eintritt. *Ausspielbar* = der Spieler entscheidet per Klick, wann.
+- Kartenhand ist privat. Andere sehen nur, **wie viele** Karten jemand hat.
+
+---
+
+## 6. UI (WebUI, HTML/CSS/JS)
+
+| Bereich | Inhalt |
+|---|---|
+| Oben Mitte | Ritualname + eine Zeile Anweisung („Choose your target“) |
+| Darunter | Zeitbalken |
+| Rechts | Spielerliste: lebend / tot, Anzahl Karten, wer gerade dran ist |
+| Unten | Eigene Tarotkarten, ausspielbare leuchten |
+| Mitte (situativ) | Entscheidungsbuttons (Ziele, Keep/Break, Tastenfolge) |
+| Untertitel | Madames Sätze |
+
+Prinzip: **Ein Ritual = eine Frage = ein Input.** Wer stirbt, darf es nicht wegen einer unklaren UI tun.
+
+---
+
+## 7. Architektur
+
+### 7.1 Grundsätze
+- **Server entscheidet alles:** Zufall, Treffer, Kartenwirkung, Zeitlimits.
+- **Client zeigt an und meldet Wünsche.** Jede Client-Nachricht wird geprüft: Ist der Spieler dran? Ist die Wahl gültig? Ist die Zeit noch offen? Besitzt er die Karte?
+- **Rituale sind Module:** Jedes Ritual ist eine eigene Datei mit derselben Schnittstelle. Neue Rituale kommen dazu, ohne den Ablauf anzufassen.
+- **Alle Zahlen in `Config.lua`**, alle Spielertexte in einer Textdatei (`Shared/Text.lua`).
+
+### 7.2 Dateien (Ziel)
 
 ```
 deathbox/
 ├── Package.toml
 ├── Shared/
-│   ├── Index.lua        Einstieg, lädt die anderen Shared-Dateien
-│   ├── Config.lua       Einstellungen (Chancen, Zeiten, Spielerzahl)
-│   └── Cards.lua        Kartendefinitionen
+│   ├── Index.lua
+│   ├── Config.lua          Zahlen und Einstellungen
+│   ├── Text.lua            alle englischen Spielertexte, Madames Sätze
+│   └── Cards.lua           Tarotkarten-Definitionen
 ├── Server/
-│   ├── Index.lua        Einstieg, Spieler-Join/-Leave
-│   ├── Arena.lua        Boden, Wände, Tisch und Stühle hoch über der Map
-│   ├── Characters.lua   Figuren spawnen, wiederbeleben, ausschalten
-│   ├── Cheats.lua       Test-Cheats: Noclip, Godmode, Teleport
-│   ├── GameState.lua    Ablauf: Warten → Partie → Zug → Spielende
-│   └── Table.lua        Sitzplätze und Reihenfolge
+│   ├── Index.lua           Einstieg, Events verbinden
+│   ├── Arena.lua           Salon, Tisch, Stühle, Licht
+│   ├── Characters.lua      Figuren, Sitzen, Ausscheiden
+│   ├── Table.lua           Sitzplätze, Reihenfolge, Hände
+│   ├── GameState.lua       Ablauf der Séance
+│   ├── Rituals.lua         Ritual-Register und Auswahl
+│   ├── Rituals/
+│   │   ├── Chamber.lua
+│   │   ├── Pact.lua
+│   │   └── Possession.lua
+│   ├── Net.lua             Server -> Client Nachrichten, Client-Eingaben prüfen
+│   └── Cheats.lua          Testbefehle
 ├── Client/
-│   └── Index.lua        Anzeige (später UI)
+│   ├── Index.lua
+│   ├── HUD.lua             WebUI erstellen, Nachrichten weiterreichen
+│   └── Input.lua           Tasten für Possession, Kartenausspielen
+├── UI/
+│   ├── index.html
+│   ├── style.css
+│   └── hud.js
 └── docs/
-    └── DESIGN.md        dieses Dokument
+    ├── DESIGN.md
+    └── ROADMAP.md
 ```
 
-### 5.3 Spielzustände (Server)
+### 7.3 Schnittstelle eines Rituals
 
+```lua
+-- Jedes Ritual liefert eine Tabelle mit:
+{
+    id = "chamber",
+    weight = 3,                         -- Häufigkeit
+    min_alive = 2,                      -- braucht mindestens so viele Lebende
+    Start = function(ctx) end,          -- ctx: gewählte Plätze, Hilfsfunktionen
+    OnInput = function(ctx, player, data) end,   -- geprüfte Client-Eingabe
+    OnTimeout = function(ctx) end,      -- Standardverhalten, wenn niemand reagiert
+    -- Ruft am Ende ctx.Finish() auf
+}
 ```
-WARTEN ──(≥ 2 Spieler + Countdown)──> PARTIE
-PARTIE:  ZUG ──> AUFLÖSUNG ──> nächster ZUG ...
-PARTIE ──(nur noch 1 lebt)──> SPIELENDE ──(Wartezeit)──> WARTEN
-```
 
-## 6. Debug-Befehle (nur zum Testen)
+---
 
-Aktiv, solange `DEBUG_COMMANDS = true` in `Shared/Config.lua` steht. **Vor dem Jam auf `false` stellen.**
+## 8. Debug-Befehle (nur Testmodus)
+
+Aktiv, solange `DEBUG_COMMANDS = true` in `Shared/Config.lua` steht. **Vor der Abgabe auf `false` stellen.**
 
 | Befehl | Wirkung |
 |---|---|
-| `/bots 3` | 3 Test-Bots spielen in der nächsten Partie mit (0–7) |
-| `/start` | Partie sofort starten |
-| `/stop` | laufende Partie abbrechen |
-| `/status` | Zustand, Bots, Lebende, Sitzordnung anzeigen |
-| Taste **B** oder `/noclip` | Fliegen und durch Wände gehen |
-| `/god` | Unverwundbar |
-| `/arena` | Zurück in die Arena teleportieren |
-| `/sit` | Auf den nächsten Stuhl setzen / wieder aufstehen (Lobby) |
-| `/sitpos <höhe> <vor>` | Sitzposition live verschieben, z. B. `/sitpos 70 10` – passende Werte danach in `Config.lua` eintragen |
+| `/bots 3` | 3 Test-Bots in der nächsten Partie |
+| `/start` / `/stop` | Partie sofort starten / abbrechen |
+| `/status` | Zustand anzeigen |
+| Taste **B** / `/noclip` | Fliegen |
+| `/god` | Unverwundbar (nicht am Tisch) |
+| `/arena` | Zurück in den Raum |
+| `/sit` / `/sitpos <höhe> <vor>` | Sitzen testen und feinjustieren |
+| geplant: `/ritual <id>` | Ein bestimmtes Ritual erzwingen |
+| geplant: `/card <id>` | Sich eine Karte geben |
 
-Cheats sind für Spieler, die gerade lebend am Tisch sitzen, gesperrt. Beim Platznehmen und beim Ausscheiden werden Noclip und Godmode automatisch abgeschaltet.
+---
 
-## 7. Offene Punkte
+## 9. Bewusst NICHT im Jam-Umfang
 
-- [ ] Spielname, Spielleiter und Setting festlegen
-- [ ] Schusschance festlegen (aktuell 1/6 in `Shared/Config.lua`)
-- [ ] Name der Karte festlegen
-- [ ] Jam-Abgabetermin eintragen: [DATUM]
-- [ ] Jam-Thema/-Regeln prüfen: [THEMA]
-- [ ] Server vor dem Jam vom `bleeding-edge`- auf den normalen Zweig umstellen (sonst kommen nur Playtest-Spieler rein)
+- Mehr als 3 Rituale, Spielmodi, Map-Abstimmung
+- Währung, Cosmetics, Fortschritt, Speicherung
+- Eigene 3D-Modelle (nur Standard-Assets)
+- Bots mit echter Intelligenz (Bots wählen zufällig)
+
+---
+
+## 10. Offene Punkte
+
+- [ ] Name final: *The Last Séance*?
+- [ ] Madame als sichtbare Figur oder nur Stimme/Licht?
+- [ ] Server vor dem Playtest vom `bleeding-edge`-Zweig auf die normale Version umstellen (der öffentliche Playtest läuft auf der Steam-Standardversion)
+- [ ] Jam-Seite: Eintrag anlegen, Server registrieren
+- [ ] `DEBUG_COMMANDS = false` vor Abgabe

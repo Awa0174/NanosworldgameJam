@@ -1,7 +1,7 @@
-# DeathBox (Arbeitstitel)
+# The Last Séance (Arbeitstitel, Package `deathbox`)
 
-Game-Jam-Projekt für [nanos world](https://nanos-world.com): ein rundenbasiertes Überlebensspiel am Tisch.
-Regeln, Umfang und Architektur stehen in [`docs/DESIGN.md`](docs/DESIGN.md).
+Beitrag zum nanos world Halloween Game Jam 2026: ein Séance-Überlebensspiel am Tisch.
+Regeln, Umfang und Architektur: [`docs/DESIGN.md`](docs/DESIGN.md) · Zeitplan: [`docs/ROADMAP.md`](docs/ROADMAP.md)
 
 ## Installation auf dem Server
 
