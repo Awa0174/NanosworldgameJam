@@ -12,7 +12,7 @@ Regeln, Umfang und Architektur: [`docs/DESIGN.md`](docs/DESIGN.md) · Zeitplan: 
    ```
 3. Server neu starten. In der Konsole muss stehen:
    ```
-   [DeathBox] Server-Package geladen (Version 0.5.2)
+   [DeathBox] Server-Package geladen (Version 0.5.3)
    ```
 
 ## Stand

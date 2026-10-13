@@ -67,15 +67,33 @@ function Characters.SitOnChair(player, chair_index)
 
 	DeathBox.Cheats.Reset(character)   -- kein Noclip/Godmode am Tisch
 
-	character:SetCollision(CollisionType.NoCollision)   -- sonst schiebt der Stuhl die Figur weg
-	character:SetGravityEnabled(false)                  -- sonst faellt sie durch den Stuhl
+	-- Reihenfolge ist wichtig:
+	-- 1. Eingabe aus und Schwung stoppen. Wer beim Partiestart gerade rennt oder springt,
+	--    wuerde sonst mit seinem Restschwung vom Stuhl wegrutschen ("wegbuggen").
+	character:SetInputEnabled(false)
+	character:StopMovement(true)
+	-- 2. Flugmodus haelt die Figur ruhig in der Luft (ohne Eingabe bremst sie sofort ab),
+	--    Kollision aus, damit der Stuhl sie nicht wegschiebt.
+	character:SetFlyingMode(true)
+	character:SetGravityEnabled(false)
+	character:SetCollision(CollisionType.NoCollision)
+	-- 3. Erst jetzt an die Sitzposition setzen
 	character:SetLocation(location)
 	character:SetRotation(body_rotation)
-	character:SetInputEnabled(false)
 	character:PlayAnimation(DeathBox.Config.ARENA.SIT_ANIMATION, AnimationSlotType.FullBody, true)
 	character:SetValue("DeathBox_Sitting", true)
 	character:SetValue("DeathBox_Chair", chair_index)
 	player:SetCameraRotation(look_rotation)
+
+	-- 4. Kurz danach nochmal exakt hinsetzen: faengt Netzwerk-Korrekturen und letzten Restschwung ab
+	Timer.SetTimeout(function()
+		if (not character:IsValid() or not character:GetValue("DeathBox_Sitting")) then return end
+		if (character:GetValue("DeathBox_Chair") ~= chair_index) then return end
+		local loc, body = DeathBox.Arena.GetChairSitTransform(chair_index)
+		character:StopMovement(true)
+		character:SetLocation(loc)
+		character:SetRotation(body)
+	end, 250)
 end
 
 -- Laesst eine sitzende Figur wieder aufstehen
@@ -83,6 +101,7 @@ function Characters.StandUp(character)
 	if (not character or not character:GetValue("DeathBox_Sitting")) then return end
 
 	character:StopAnimation(DeathBox.Config.ARENA.SIT_ANIMATION)
+	character:SetFlyingMode(false)
 	character:SetCollision(CollisionType.Normal)
 	character:SetGravityEnabled(true)
 	character:SetInputEnabled(true)
