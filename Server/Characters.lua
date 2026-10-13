@@ -5,14 +5,9 @@ DeathBox.Characters = {}
 
 local Characters = DeathBox.Characters
 
--- Waehlt einen Spawnpunkt der Map, sonst die Mitte der Map
+-- Spawnpunkt in der Arena (statt auf der Map)
 local function GetSpawnLocation()
-	local spawn_points = Server.GetMapSpawnPoints()
-	if (#spawn_points > 0) then
-		local point = spawn_points[math.random(#spawn_points)]
-		return point.location, point.rotation
-	end
-	return Vector(0, 0, 100), Rotator()
+	return DeathBox.Arena.GetSpawnLocation()
 end
 
 -- Gibt dem Spieler eine lebende Figur: neu erzeugen, wiederbeleben oder vorhandene lassen
@@ -49,9 +44,26 @@ function Characters.Remove(player)
 	end
 end
 
--- Belebt alle verbundenen Spieler wieder (z. B. zurueck in der Lobby)
+-- Stellt die Figur an ihren Platz am Tisch und friert die Bewegung ein
+function Characters.PlaceAtSeat(player, location, rotation)
+	if (not player or not player:IsValid()) then return end
+
+	local character = player:GetControlledCharacter()
+	if (not character) then return end
+
+	character:SetLocation(location)
+	character:SetRotation(rotation)
+	character:SetInputEnabled(false)
+	player:SetCameraRotation(rotation)
+end
+
+-- Belebt alle verbundenen Spieler wieder und gibt ihnen die Bewegung zurueck (z. B. zurueck in der Lobby)
 function Characters.ReviveAll()
 	for _, player in pairs(Player.GetPairs()) do
 		Characters.EnsureAlive(player)
+		local character = player:GetControlledCharacter()
+		if (character) then
+			character:SetInputEnabled(true)
+		end
 	end
 end

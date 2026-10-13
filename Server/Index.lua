@@ -2,6 +2,7 @@
 -- Einstiegspunkt auf dem Server: laedt die Module und verbindet sie mit den nanos-world-Events.
 -- Die eigentliche Spiellogik steht in GameState.lua.
 
+Package.Require("Arena.lua")
 Package.Require("Characters.lua")
 Package.Require("Table.lua")
 Package.Require("GameState.lua")
@@ -10,6 +11,9 @@ local Game = DeathBox.Game
 local Characters = DeathBox.Characters
 
 Console.Log("[DeathBox] Server-Package geladen (Version %s)", DeathBox.VERSION)
+
+-- Arena sofort bauen, damit sie steht, bevor der erste Spieler spawnt
+DeathBox.Arena.Build()
 
 -- Spieler betritt den Server
 Player.Subscribe("Spawn", function(player)

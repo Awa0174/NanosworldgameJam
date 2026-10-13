@@ -56,6 +56,13 @@
 - Spieler geht während des Countdowns und es sind zu wenige → Countdown wird abgebrochen.
 - Mehr Spieler als Plätze → die übrigen schauen zu.
 
+### 3.7 Spielort (Arena)
+- Eigene Fläche **20 m × 20 m** mit 4 m hohen Wänden, **200 m über der Map** – funktioniert auf jeder Map.
+- In der Mitte ein Tisch, darum **8 Stühle** (einer pro möglichem Platz), Platz 1 bei 0°, dann im Uhrzeigersinn.
+- Lobby: Spieler spawnen frei im Raum und können herumlaufen.
+- Partie: Jeder Spieler wird hinter seinen Stuhl gestellt, Blick zum Tisch, Bewegung gesperrt. Bei weniger als 8 Spielern werden die Plätze gleichmäßig verteilt.
+- Alle Maße und Meshes stehen in `Shared/Config.lua` unter `ARENA`.
+
 ## 4. Umfang in Stufen
 
 | Stufe | Inhalt | Fertig, wenn … |
@@ -85,6 +92,7 @@ deathbox/
 │   └── Cards.lua        Kartendefinitionen
 ├── Server/
 │   ├── Index.lua        Einstieg, Spieler-Join/-Leave
+│   ├── Arena.lua        Boden, Wände, Tisch und Stühle hoch über der Map
 │   ├── Characters.lua   Figuren spawnen, wiederbeleben, ausschalten
 │   ├── GameState.lua    Ablauf: Warten → Partie → Zug → Spielende
 │   └── Table.lua        Sitzplätze und Reihenfolge
