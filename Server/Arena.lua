@@ -22,7 +22,7 @@ local Cfg = DeathBox.Config.ARENA
 local REQUIRED_SETTINGS = {
 	"CENTER", "FLOOR_SIZE", "FLOOR_THICKNESS", "WALL_HEIGHT", "WALL_THICKNESS", "FLOOR_COLOR", "WALL_COLOR",
 	"TABLE_MESH", "TABLE_SCALE", "CHAIR_MESH", "CHAIR_RADIUS", "CHAIR_YAW_OFFSET",
-	"SIT_ANIMATION", "SIT_HEIGHT", "SIT_FORWARD",
+	"SIT_ANIMATION", "SIT_HEIGHT", "SIT_FORWARD", "SIT_YAW_OFFSET",
 }
 
 local function ValidateConfig()
@@ -117,13 +117,17 @@ function Arena.GetChairIndex(seat_index, seat_count)
 	return math.floor((seat_index - 1) * count / seat_count) + 1
 end
 
--- Sitzposition und Blickrichtung fuer einen bestimmten Stuhl (1 bis MAX_PLAYERS).
+-- Sitzposition fuer einen bestimmten Stuhl (1 bis MAX_PLAYERS).
+-- Gibt zurueck: Position, Drehung der Figur, Blickrichtung der Kamera (immer zur Tischmitte).
+-- Figur und Kamera sind getrennt, weil das Modell/die Animation eine eigene Grundausrichtung hat.
 -- Wird bei jedem Aufruf neu berechnet, damit /sitpos live wirkt.
 function Arena.GetChairSitTransform(chair_index)
 	local chair = Arena.chairs[chair_index]
 	local radius = Cfg.CHAIR_RADIUS - Cfg.SIT_FORWARD
 	local location = PointOnCircle(chair.angle, radius, Cfg.SIT_HEIGHT)
-	return location, Rotator(0, chair.yaw, 0)
+	local body = Rotator(0, (chair.yaw + Cfg.SIT_YAW_OFFSET) % 360, 0)
+	local look = Rotator(-10, chair.yaw, 0)   -- leicht nach unten auf den Tisch
+	return location, body, look
 end
 
 -- Naechster Stuhl zu einer Position (fuer /sit im Testmodus)

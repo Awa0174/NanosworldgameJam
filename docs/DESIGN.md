@@ -197,7 +197,7 @@ Aktiv, solange `DEBUG_COMMANDS = true` in `Shared/Config.lua` steht. **Vor der A
 | Taste **B** / `/noclip` | Fliegen |
 | `/god` | Unverwundbar (nicht am Tisch) |
 | `/arena` | Zurück in den Raum |
-| `/sit` / `/sitpos <höhe> <vor>` | Sitzen testen und feinjustieren |
+| `/sit` / `/sitpos <höhe> <vor> [drehung]` | Sitzen testen und live feinjustieren, z. B. `/sitpos 85 10 180` |
 | `/ritual <id>` | Nächstes Ritual erzwingen, z. B. `/ritual chamber` |
 | geplant: `/card <id>` | Sich eine Karte geben |
 

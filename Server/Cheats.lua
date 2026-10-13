@@ -95,24 +95,26 @@ function Cheats.ToggleSit(player)
 
 	local chair_index = DeathBox.Arena.GetNearestChairIndex(character:GetLocation())
 	Characters.SitOnChair(player, chair_index)
-	Chat.SendMessage(player, "Seated on chair " .. chair_index .. ". Adjust with /sitpos <height> <forward>, /sit to stand up.")
+	Chat.SendMessage(player, "Seated on chair " .. chair_index .. ". Adjust with /sitpos <height> <forward> [yaw], /sit to stand up.")
 end
 
--- /sitpos <hoehe> <vor>: Sitzposition live aendern, ohne Neustart.
+-- /sitpos <hoehe> <vor> [drehung]: Sitzposition live aendern, ohne Neustart.
 -- Gilt nur bis zum Neustart. Passende Werte danach in Shared/Config.lua eintragen.
 function Cheats.SetSitPosition(player, argument)
 	if (not DeathBox.Config.DEBUG_COMMANDS) then return end
 
-	local height, forward = string.match(argument or "", "^(%-?%d+)%s+(%-?%d+)$")
-	height, forward = tonumber(height), tonumber(forward)
+	local cfg = DeathBox.Config.ARENA
+	local height, forward, yaw = string.match(argument or "", "^(%-?%d+)%s+(%-?%d+)%s*(%-?%d*)$")
+	height, forward, yaw = tonumber(height), tonumber(forward), tonumber(yaw)
 	if (not height or not forward or math.abs(height) > 300 or math.abs(forward) > 200) then
-		local cfg = DeathBox.Config.ARENA
-		Chat.SendMessage(player, string.format("Usage: /sitpos <height> <forward>  (current: %d %d)", cfg.SIT_HEIGHT, cfg.SIT_FORWARD))
+		Chat.SendMessage(player, string.format("Usage: /sitpos <height> <forward> [yaw]  (current: %d %d %d)",
+			cfg.SIT_HEIGHT, cfg.SIT_FORWARD, cfg.SIT_YAW_OFFSET))
 		return
 	end
 
-	DeathBox.Config.ARENA.SIT_HEIGHT = height
-	DeathBox.Config.ARENA.SIT_FORWARD = forward
+	cfg.SIT_HEIGHT = height
+	cfg.SIT_FORWARD = forward
+	if (yaw) then cfg.SIT_YAW_OFFSET = yaw % 360 end
 
 	-- Alle Sitzenden an die neue Position setzen
 	for _, p in pairs(Player.GetPairs()) do
@@ -122,7 +124,8 @@ function Cheats.SetSitPosition(player, argument)
 		end
 	end
 
-	Chat.SendMessage(player, string.format("Sit position: SIT_HEIGHT = %d, SIT_FORWARD = %d (copy into Config.lua when it fits)", height, forward))
+	Chat.SendMessage(player, string.format("SIT_HEIGHT = %d, SIT_FORWARD = %d, SIT_YAW_OFFSET = %d (copy into Config.lua when it fits)",
+		cfg.SIT_HEIGHT, cfg.SIT_FORWARD, cfg.SIT_YAW_OFFSET))
 end
 
 -- Schaltet alle Cheats einer Figur ab (z. B. bevor sie an den Tisch gestellt oder ausgeschaltet wird)

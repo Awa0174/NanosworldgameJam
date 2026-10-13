@@ -63,19 +63,19 @@ function Characters.SitOnChair(player, chair_index)
 	if (not character or character:IsDead()) then return end
 	if (not DeathBox.Arena.built) then return end   -- ohne Arena keine Stuehle
 
-	local location, rotation = DeathBox.Arena.GetChairSitTransform(chair_index)
+	local location, body_rotation, look_rotation = DeathBox.Arena.GetChairSitTransform(chair_index)
 
 	DeathBox.Cheats.Reset(character)   -- kein Noclip/Godmode am Tisch
 
 	character:SetCollision(CollisionType.NoCollision)   -- sonst schiebt der Stuhl die Figur weg
 	character:SetGravityEnabled(false)                  -- sonst faellt sie durch den Stuhl
 	character:SetLocation(location)
-	character:SetRotation(rotation)
+	character:SetRotation(body_rotation)
 	character:SetInputEnabled(false)
 	character:PlayAnimation(DeathBox.Config.ARENA.SIT_ANIMATION, AnimationSlotType.FullBody, true)
 	character:SetValue("DeathBox_Sitting", true)
 	character:SetValue("DeathBox_Chair", chair_index)
-	player:SetCameraRotation(rotation)
+	player:SetCameraRotation(look_rotation)
 end
 
 -- Laesst eine sitzende Figur wieder aufstehen

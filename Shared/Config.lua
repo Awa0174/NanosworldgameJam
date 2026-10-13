@@ -43,10 +43,11 @@ DeathBox.Config = {
 		CHAIR_RADIUS = 240,             -- Abstand Stuhl <-> Tischmitte in cm (mit dem Tisch mitwachsen lassen)
 		CHAIR_YAW_OFFSET = 270,         -- Drehung des Stuhl-Modells, damit die Sitzflaeche zum Tisch zeigt (im Spiel getestet)
 
-		-- Sitzen: Position der Figur relativ zum Stuhl. Im Spiel mit /sitpos <hoehe> <vor> feinjustieren.
+		-- Sitzen: Position der Figur relativ zum Stuhl. Im Spiel mit /sitpos <hoehe> <vor> <drehung> feinjustieren.
 		SIT_ANIMATION = "nanos-world::A_Mannequin_Sit_Bench",
-		SIT_HEIGHT = 90,                -- cm ueber dem Boden (Mittelpunkt der Figur)
-		SIT_FORWARD = 0,                -- cm Richtung Tisch (negativ = nach hinten)
+		SIT_HEIGHT = 85,                -- cm ueber dem Boden (Mittelpunkt der Figur)
+		SIT_FORWARD = 10,               -- cm Richtung Tisch (negativ = nach hinten)
+		SIT_YAW_OFFSET = 180,           -- Drehung der Figur; erster Ingame-Test: Figur sass verkehrt herum
 	},
 
 	-- Debug: Chat-Befehle /start, /bots, /status, /ritual, Cheats
