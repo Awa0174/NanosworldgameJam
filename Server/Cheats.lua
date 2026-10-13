@@ -1,5 +1,5 @@
 -- Server/Cheats.lua
--- Test-Cheats: Noclip (Taste B), /god, /arena.
+-- Test-Cheats: Noclip (Taste B), /god, /arena, /sit, /sitpos.
 -- Nur aktiv, wenn Config.DEBUG_COMMANDS = true. Waehrend einer Partie fuer Spieler am Tisch gesperrt.
 --
 -- Ablauf bei Noclip:
@@ -49,6 +49,8 @@ function Cheats.ToggleNoClip(player)
 	local character = GetCheatCharacter(player)
 	if (not character) then return end
 
+	Characters.StandUp(character)   -- wer sitzt, steht zuerst auf
+
 	local enabled = not character:GetValue("DeathBox_NoClip")
 	character:SetFlyingMode(enabled)
 	character:SetCollision(enabled and CollisionType.NoCollision or CollisionType.Normal)
@@ -72,10 +74,55 @@ function Cheats.TeleportToArena(player)
 	local character = GetCheatCharacter(player)
 	if (not character) then return end
 
+	Characters.StandUp(character)
+
 	local location, rotation = DeathBox.Arena.GetSpawnLocation()
 	character:SetLocation(location)
 	character:SetRotation(rotation)
 	Chat.SendMessage(player, "Zurueck in der Arena.")
+end
+
+-- /sit: auf den naechsten Stuhl setzen bzw. wieder aufstehen (zum Testen in der Lobby)
+function Cheats.ToggleSit(player)
+	local character = GetCheatCharacter(player)
+	if (not character) then return end
+
+	if (Characters.IsSitting(player)) then
+		Characters.StandUp(character)
+		Chat.SendMessage(player, "Aufgestanden.")
+		return
+	end
+
+	local chair_index = DeathBox.Arena.GetNearestChairIndex(character:GetLocation())
+	Characters.SitOnChair(player, chair_index)
+	Chat.SendMessage(player, "Sitzt auf Stuhl " .. chair_index .. ". Mit /sitpos <hoehe> <vor> anpassen, /sit zum Aufstehen.")
+end
+
+-- /sitpos <hoehe> <vor>: Sitzposition live aendern, ohne Neustart.
+-- Gilt nur bis zum Neustart. Passende Werte danach in Shared/Config.lua eintragen.
+function Cheats.SetSitPosition(player, argument)
+	if (not DeathBox.Config.DEBUG_COMMANDS) then return end
+
+	local height, forward = string.match(argument or "", "^(%-?%d+)%s+(%-?%d+)$")
+	height, forward = tonumber(height), tonumber(forward)
+	if (not height or not forward or math.abs(height) > 300 or math.abs(forward) > 200) then
+		local cfg = DeathBox.Config.ARENA
+		Chat.SendMessage(player, string.format("Benutzung: /sitpos <hoehe> <vor>  (aktuell: %d %d)", cfg.SIT_HEIGHT, cfg.SIT_FORWARD))
+		return
+	end
+
+	DeathBox.Config.ARENA.SIT_HEIGHT = height
+	DeathBox.Config.ARENA.SIT_FORWARD = forward
+
+	-- Alle Sitzenden an die neue Position setzen
+	for _, p in pairs(Player.GetPairs()) do
+		local character = p:GetControlledCharacter()
+		if (character and character:GetValue("DeathBox_Sitting")) then
+			Characters.SitOnChair(p, character:GetValue("DeathBox_Chair"))
+		end
+	end
+
+	Chat.SendMessage(player, string.format("Sitzposition: SIT_HEIGHT = %d, SIT_FORWARD = %d (in Config.lua eintragen, wenn es passt)", height, forward))
 end
 
 -- Schaltet alle Cheats einer Figur ab (z. B. bevor sie an den Tisch gestellt oder ausgeschaltet wird)
@@ -98,7 +145,9 @@ Events.SubscribeRemote("DeathBox:ToggleNoClip", function(player)
 	Cheats.ToggleNoClip(player)
 end)
 
--- Chat-Befehle /god und /arena (werden in GameState.HandleChatCommand mit ausgewertet)
+-- Chat-Befehle (werden in GameState.HandleChatCommand mit ausgewertet)
 DeathBox.Game.DebugCommands.god = function(player) Cheats.ToggleGod(player) end
 DeathBox.Game.DebugCommands.arena = function(player) Cheats.TeleportToArena(player) end
 DeathBox.Game.DebugCommands.noclip = function(player) Cheats.ToggleNoClip(player) end
+DeathBox.Game.DebugCommands.sit = function(player) Cheats.ToggleSit(player) end
+DeathBox.Game.DebugCommands.sitpos = function(player, argument) Cheats.SetSitPosition(player, argument) end

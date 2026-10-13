@@ -31,10 +31,15 @@ DeathBox.Config = {
 		WALL_COLOR = Color(0.15, 0.12, 0.1),
 
 		TABLE_MESH = "nanos-world::SM_WoodenTable",
+		TABLE_SCALE = Vector(2, 2, 1),  -- Tisch breiter machen (X/Y), Hoehe (Z) bleibt
 		CHAIR_MESH = "nanos-world::SM_WoodenChair",
-		CHAIR_RADIUS = 160,             -- Abstand Stuhl <-> Tischmitte in cm
-		CHAIR_YAW_OFFSET = 0,           -- falls die Stuehle falsch herum stehen: 90, 180 oder 270 probieren
-		PLAYER_RADIUS = 220,            -- wo Spieler waehrend der Partie stehen (hinter dem Stuhl)
+		CHAIR_RADIUS = 240,             -- Abstand Stuhl <-> Tischmitte in cm (mit dem Tisch mitwachsen lassen)
+		CHAIR_YAW_OFFSET = 90,          -- Drehung des Stuhl-Modells, damit die Sitzflaeche zum Tisch zeigt
+
+		-- Sitzen: Position der Figur relativ zum Stuhl. Im Spiel mit /sitpos <hoehe> <vor> feinjustieren.
+		SIT_ANIMATION = "nanos-world::A_Mannequin_Sit_Bench",
+		SIT_HEIGHT = 90,                -- cm ueber dem Boden (Mittelpunkt der Figur)
+		SIT_FORWARD = 0,                -- cm Richtung Tisch (negativ = nach hinten)
 	},
 
 	-- Debug: Chat-Befehle /start, /bots, /status

@@ -1,5 +1,6 @@
 -- Server/Arena.lua
--- Baut eine leere Flaeche hoch ueber der Map: Boden, vier Waende, ein Tisch und Stuehle.
+-- Baut eine leere Flaeche hoch ueber der Map: Boden, vier Waende, ein Tisch und Stuehle,
+-- und liefert die Sitzpositionen fuer die Spieler.
 -- So ist es egal, welche Map der Server laedt. Alles wird beim Entladen des Packages
 -- automatisch entfernt (auto_cleanup = true in der Package.toml).
 --
@@ -52,6 +53,7 @@ end
 
 local function BuildTableAndChairs()
 	local table_mesh = StaticMesh(Cfg.CENTER, Rotator(), Cfg.TABLE_MESH)
+	table_mesh:SetScale(Cfg.TABLE_SCALE)
 	table.insert(Arena.meshes, table_mesh)
 
 	local count = DeathBox.Config.MAX_PLAYERS
@@ -79,7 +81,8 @@ end
 function Arena.GetSpawnLocation()
 	local angle = math.random() * 360
 	local max_radius = Cfg.FLOOR_SIZE / 2 - 150
-	local radius = Cfg.PLAYER_RADIUS + 150 + math.random() * (max_radius - Cfg.PLAYER_RADIUS - 150)
+	local min_radius = Cfg.CHAIR_RADIUS + 150
+	local radius = min_radius + math.random() * (max_radius - min_radius)
 	return PointOnCircle(angle, radius, 100), Rotator(0, angle + 180, 0)
 end
 
@@ -90,9 +93,25 @@ function Arena.GetChairIndex(seat_index, seat_count)
 	return math.floor((seat_index - 1) * count / seat_count) + 1
 end
 
--- Position und Blickrichtung fuer einen Spieler an seinem Platz (steht hinter dem Stuhl)
-function Arena.GetSeatTransform(seat_index, seat_count)
-	local chair = Arena.chairs[Arena.GetChairIndex(seat_index, seat_count)]
-	local location = PointOnCircle(chair.angle, Cfg.PLAYER_RADIUS, 100)
+-- Sitzposition und Blickrichtung fuer einen bestimmten Stuhl (1 bis MAX_PLAYERS).
+-- Wird bei jedem Aufruf neu berechnet, damit /sitpos live wirkt.
+function Arena.GetChairSitTransform(chair_index)
+	local chair = Arena.chairs[chair_index]
+	local radius = Cfg.CHAIR_RADIUS - Cfg.SIT_FORWARD
+	local location = PointOnCircle(chair.angle, radius, Cfg.SIT_HEIGHT)
 	return location, Rotator(0, chair.yaw, 0)
+end
+
+-- Naechster Stuhl zu einer Position (fuer /sit im Testmodus)
+function Arena.GetNearestChairIndex(location)
+	local best_index, best_dist = 1, math.huge
+	for index, chair in ipairs(Arena.chairs) do
+		local chair_location = PointOnCircle(chair.angle, Cfg.CHAIR_RADIUS)
+		local dx, dy = chair_location.X - location.X, chair_location.Y - location.Y
+		local dist = dx * dx + dy * dy
+		if (dist < best_dist) then
+			best_index, best_dist = index, dist
+		end
+	end
+	return best_index
 end

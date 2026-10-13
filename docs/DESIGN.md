@@ -58,9 +58,10 @@
 
 ### 3.7 Spielort (Arena)
 - Eigene Fläche **20 m × 20 m** mit 4 m hohen Wänden, **200 m über der Map** – funktioniert auf jeder Map.
-- In der Mitte ein Tisch, darum **8 Stühle** (einer pro möglichem Platz), Platz 1 bei 0°, dann im Uhrzeigersinn.
+- In der Mitte ein vergrößerter Tisch (2× breiter), darum **8 Stühle** (einer pro möglichem Platz), Platz 1 bei 0°, dann im Uhrzeigersinn.
 - Lobby: Spieler spawnen frei im Raum und können herumlaufen.
-- Partie: Jeder Spieler wird hinter seinen Stuhl gestellt, Blick zum Tisch, Bewegung gesperrt. Bei weniger als 8 Spielern werden die Plätze gleichmäßig verteilt.
+- Partie: Jeder Spieler **sitzt auf seinem Stuhl** (Sitz-Animation, Blick zum Tisch, Bewegung gesperrt). Bei weniger als 8 Spielern werden die Plätze gleichmäßig verteilt.
+- Wer ausscheidet, steht auf (Schwerkraft an) und stirbt.
 - Alle Maße und Meshes stehen in `Shared/Config.lua` unter `ARENA`.
 
 ## 4. Umfang in Stufen
@@ -124,6 +125,8 @@ Aktiv, solange `DEBUG_COMMANDS = true` in `Shared/Config.lua` steht. **Vor dem J
 | Taste **B** oder `/noclip` | Fliegen und durch Wände gehen |
 | `/god` | Unverwundbar |
 | `/arena` | Zurück in die Arena teleportieren |
+| `/sit` | Auf den nächsten Stuhl setzen / wieder aufstehen (Lobby) |
+| `/sitpos <höhe> <vor>` | Sitzposition live verschieben, z. B. `/sitpos 70 10` – passende Werte danach in `Config.lua` eintragen |
 
 Cheats sind für Spieler, die gerade lebend am Tisch sitzen, gesperrt. Beim Platznehmen und beim Ausscheiden werden Noclip und Godmode automatisch abgeschaltet.
 

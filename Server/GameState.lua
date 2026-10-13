@@ -134,12 +134,11 @@ function Game.StartGame()
 	DBTable.Build(seated_players, bots)
 	Characters.ReviveAll()
 
-	-- Jeden echten Spieler an seinen Platz am Tisch stellen
+	-- Jeden echten Spieler auf seinen Stuhl setzen
 	local seat_count = #DBTable.seats
 	for index, seat in ipairs(DBTable.seats) do
 		if (seat.player) then
-			local location, rotation = DeathBox.Arena.GetSeatTransform(index, seat_count)
-			Characters.PlaceAtSeat(seat.player, location, rotation)
+			Characters.SitOnChair(seat.player, DeathBox.Arena.GetChairIndex(index, seat_count))
 		end
 	end
 
