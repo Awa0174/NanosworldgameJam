@@ -65,9 +65,10 @@ SÉANCE ──(1 Spieler übrig)──> ENDE (Sieger) ──> LOBBY
 ### 4.1 The Chamber (Revolver) – *Glück + Taktik*
 - Ein Revolver mit **6 Kammern und 1 Kugel**. Die Trommel bleibt zwischen den Zügen bestehen. Die Chance steigt sichtbar: 1/6 → 1/5 → … → 1/1.
 - Der gewählte Spieler **wählt ein Ziel** (einen anderen lebenden Spieler) und drückt ab.
-- **Zeitlimit 10 s:** Wer nicht wählt, richtet die Waffe auf sich selbst.
+- **Zeitlimit 8 s:** Wer nicht wählt, richtet die Waffe auf sich selbst.
 - Nach einem Schuss wird neu geladen (wieder 1/6).
-- **UI:** Trommel mit verbleibenden Kammern, Zielauswahl per Klick auf Spielernamen.
+- **UI:** Trommel mit verbleibenden Kammern und Chance („1 IN 4“), Zielauswahl im **Séance-Ring**: alle Plätze so angeordnet wie am Tisch, der eigene Platz unten.
+- **Tempo:** Verkünden 1,5 s → Wählen bis 8 s → Zielen 1,5 s → Ergebnis 2 s → nächster Zug nach 1,5 s. Mit Bots ca. 6–8 s pro Zug.
 
 ### 4.2 The Pact (Vertrauen / Verrat) – *Social*
 - Madame wählt **zwei Spieler**. Beide haben **20 s Redezeit** (Chat/Voice) und dann **8 s**, um geheim zu wählen: **Keep** oder **Break**.
@@ -117,6 +118,10 @@ Jeder Spieler startet mit **1 zufälligen Karte**, maximal **3 auf der Hand**. W
 
 Prinzip: **Ein Ritual = eine Frage = ein Input.** Wer stirbt, darf es nicht wegen einer unklaren UI tun.
 
+**Leitlinie Tempo:** Kurzweiliger Spaß hat Vorrang. Keine Pause länger als nötig, jede Wartezeit hat eine sichtbare Anzeige (Docht, Countdown), eine Partie mit 6–8 Spielern soll in **4–6 Minuten** vorbei sein.
+
+**Sicherheit:** Spielernamen und Texte werden in der WebUI nur per `textContent` gesetzt, nie als HTML.
+
 ---
 
 ## 7. Architektur
@@ -152,12 +157,12 @@ deathbox/
 │   └── Cheats.lua          Testbefehle
 ├── Client/
 │   ├── Index.lua
-│   ├── HUD.lua             WebUI erstellen, Nachrichten weiterreichen
-│   └── Input.lua           Tasten für Possession, Kartenausspielen
-├── UI/
-│   ├── index.html
-│   ├── style.css
-│   └── hud.js
+│   ├── HUD.lua             WebUI erstellen, Nachrichten weiterreichen, Sounds
+│   └── UI/
+│       ├── index.html
+│       ├── style.css
+│       ├── hud.js
+│       └── fonts/          Cinzel + Cormorant Garamond (SIL Open Font License)
 └── docs/
     ├── DESIGN.md
     └── ROADMAP.md
@@ -193,7 +198,7 @@ Aktiv, solange `DEBUG_COMMANDS = true` in `Shared/Config.lua` steht. **Vor der A
 | `/god` | Unverwundbar (nicht am Tisch) |
 | `/arena` | Zurück in den Raum |
 | `/sit` / `/sitpos <höhe> <vor>` | Sitzen testen und feinjustieren |
-| geplant: `/ritual <id>` | Ein bestimmtes Ritual erzwingen |
+| `/ritual <id>` | Nächstes Ritual erzwingen, z. B. `/ritual chamber` |
 | geplant: `/card <id>` | Sich eine Karte geben |
 
 ---

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<title>The Last Séance – HUD</title>
+	<link rel="stylesheet" href="style.css">
+	<script src="hud.js" defer></script>
+</head>
+<body>
+	<!-- Dunkle Raender, pulsieren wenn jemand gewaehlt wird -->
+	<div id="vignette"></div>
+	<!-- Vollbild-Blitz fuer Schuss / Ward -->
+	<div id="flash"></div>
+
+	<!-- Oben: Ritualname, Anweisung, Zeitdocht -->
+	<header id="ritual" class="hidden">
+		<div class="eyebrow">The Last Séance</div>
+		<h1 id="ritual-name"></h1>
+		<p id="ritual-instruction"></p>
+		<div id="wick" class="hidden"><div id="wick-fill"><span class="flame"></span></div></div>
+	</header>
+
+	<!-- Revolver-Trommel (nur bei The Chamber) -->
+	<div id="cylinder" class="hidden">
+		<svg viewBox="-60 -60 120 120" aria-hidden="true">
+			<circle class="cyl-body" r="50"></circle>
+			<g id="cyl-rotor"></g>
+			<circle class="cyl-pin" r="7"></circle>
+		</svg>
+		<div id="cyl-odds"></div>
+	</div>
+
+	<!-- Rechts: die Runde -->
+	<aside id="circle" class="hidden">
+		<h2>The Circle</h2>
+		<ol id="seats"></ol>
+	</aside>
+
+	<!-- Mitte: grosses Ereigniswort (BANG, click, WARDED) -->
+	<div id="word"></div>
+
+	<!-- Mitte: Banner (gewaehlt, Sieger, Start) -->
+	<div id="banner" class="hidden">
+		<div id="banner-small"></div>
+		<div id="banner-big"></div>
+	</div>
+
+	<!-- Auswahl-Ring: Ziele so angeordnet wie am Tisch, du sitzt unten -->
+	<div id="ring" class="hidden">
+		<div id="ring-board">
+			<div id="ring-center">
+				<div id="ring-title">Choose your target</div>
+				<div id="ring-count"></div>
+			</div>
+		</div>
+	</div>
+
+	<!-- Unten: Lobby-Status -->
+	<div id="lobby" class="hidden">
+		<div id="lobby-text"></div>
+		<div id="lobby-sub"></div>
+	</div>
+
+	<!-- Unten: Madames Untertitel -->
+	<footer id="madame" class="hidden">
+		<span class="who">Madame</span>
+		<p id="madame-text"></p>
+	</footer>
+</body>
+</html>

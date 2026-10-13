@@ -12,7 +12,7 @@ Regeln, Umfang und Architektur: [`docs/DESIGN.md`](docs/DESIGN.md) · Zeitplan: 
    ```
 3. Server neu starten. In der Konsole muss stehen:
    ```
-   [DeathBox] Server-Package geladen (Version 0.4.1)
+   [DeathBox] Server-Package geladen (Version 0.5.0)
    ```
 
 ## Stand
@@ -23,9 +23,12 @@ Regeln, Umfang und Architektur: [`docs/DESIGN.md`](docs/DESIGN.md) · Zeitplan: 
 - [x] Arena: Fläche, Wände, Tisch, Stühle
 - [x] Test-Cheats: Noclip (B), /god, /arena, /sit, /sitpos
 - [ ] Sitzen: Position im Spiel feinjustiert
+- [x] Ritual-System (Module), The Chamber mit gemeinsamer Trommel
+- [x] HUD (WebUI): Ritual, Docht-Timer, Trommel, Runde, Madame-Untertitel, Séance-Ring zur Zielwahl
+- [ ] HUD im Spiel getestet
 - [ ] MVP mit mehreren echten Spielern getestet
 - [ ] Kern: Kartenhand und UI
 
 ## Testen allein
 
-Im Chat: `/bots 3` und danach `/start`. Weitere Befehle stehen in `docs/DESIGN.md`, Abschnitt 6.
+Im Chat: `/bots 3` und danach `/start`. Mit `/ritual chamber` lässt sich das nächste Ritual erzwingen. Weitere Befehle stehen in `docs/DESIGN.md`, Abschnitt 6.

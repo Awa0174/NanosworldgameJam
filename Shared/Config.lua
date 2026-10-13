@@ -8,17 +8,24 @@ DeathBox.Config = {
 	MIN_PLAYERS = 2,            -- ab so vielen Spielern startet automatisch eine Partie
 	MAX_PLAYERS = 8,            -- Plaetze am Tisch, weitere Spieler schauen zu
 
-	-- Zeiten in Sekunden
-	START_COUNTDOWN = 10,       -- Countdown bis zum Partiestart
-	TURN_SUSPENSE = 3,          -- Spannungspause: Spieler hat die Pistole, bevor abgedrueckt wird
-	BETWEEN_TURNS = 2,          -- Pause nach dem Abdruecken, bevor der naechste dran ist
-	GAME_END_DELAY = 10,        -- Pause nach dem Sieg bis zur Rueckkehr in die Lobby
+	-- Zeiten in Sekunden. Leitlinie: kurz und knackig, kein Leerlauf.
+	START_COUNTDOWN = 8,        -- Countdown bis zum Partiestart
+	BETWEEN_TURNS = 1.5,        -- Pause zwischen zwei Ritualen
+	ANNOUNCE_TIME = 1.5,        -- Madame verkuendet, wer gewaehlt ist, bevor es losgeht
+	GAME_END_DELAY = 8,         -- Pause nach dem Sieg bis zur Rueckkehr in die Lobby
+	BOT_THINK_TIME = 1.5,       -- so lange "ueberlegt" ein Test-Bot, bevor er waehlt
 
-	-- Pistole
-	SHOT_CHANCE = 1 / 6,        -- Wahrscheinlichkeit, dass die Pistole zuendet (1/6 = ~17 %)
+	-- Ritual: The Chamber (Revolver mit gemeinsamer Trommel)
+	CHAMBER = {
+		CHAMBERS = 6,           -- Kammern in der Trommel, eine davon geladen
+		CHOOSE_TIME = 8,        -- so lange darf der Schuetze sein Ziel waehlen
+		AIM_TIME = 1.5,         -- Spannungspause zwischen Zielen und Abdruecken
+		RESULT_TIME = 2,        -- Pause nach Klick/Schuss
+	},
 
 	-- Karten
-	START_CARDS = { "shield" }, -- Karten, mit denen jeder Spieler in die Partie startet
+	START_CARDS = { "ward" },   -- Karten, mit denen jeder Spieler in die Partie startet
+	MAX_HAND = 3,               -- maximal so viele Karten auf der Hand
 
 	-- Arena: eigene Flaeche hoch ueber der Map, damit die Map selbst egal ist
 	ARENA = {
@@ -42,7 +49,7 @@ DeathBox.Config = {
 		SIT_FORWARD = 0,                -- cm Richtung Tisch (negativ = nach hinten)
 	},
 
-	-- Debug: Chat-Befehle /start, /bots, /status
+	-- Debug: Chat-Befehle /start, /bots, /status, /ritual, Cheats
 	-- VOR DEM JAM AUF false STELLEN, sonst kann jeder Spieler Partien starten.
 	DEBUG_COMMANDS = true,
 	MAX_BOTS = 7,

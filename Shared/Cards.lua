@@ -1,16 +1,20 @@
 -- Shared/Cards.lua
--- Kartendefinitionen. Liegt in Shared, damit spaeter auch die Client-UI Name und Beschreibung kennt.
+-- Tarotkarten. Liegt in Shared, damit auch die Client-UI Name und Beschreibung kennt.
 -- Die WIRKUNG einer Karte wird ausschliesslich auf dem Server ausgefuehrt.
+--
+-- type:
+--   "auto"     greift von selbst, wenn die Bedingung eintritt
+--   "playable" der Spieler entscheidet per Klick, wann (kommt an Tag 4)
 
 DeathBox = DeathBox or {}
 
 DeathBox.Cards = {
-	shield = {
-		name = "[KARTENNAME]",
-		description = "[BESCHREIBUNG] Rettet dich einmal vor einem Schuss. Wird automatisch verbraucht.",
-		-- Wann die Karte greift. MVP: nur "before_death" (kurz bevor ein Spieler ausscheiden wuerde).
-		trigger = "before_death",
+	ward = {
+		name = "The Ward",
+		type = "auto",
+		description = "Prevents your death once.",
 	},
+	-- Geplant (Tag 4): mirror, moon, hermit
 }
 
 -- Prueft, ob es eine Karte mit dieser ID gibt
