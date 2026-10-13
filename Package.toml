@@ -1,0 +1,34 @@
+# vault configurations
+[meta]
+    # friendly name
+    title =                 "Death Box (Game Jam)"
+    # contributors
+    author =                "Gluonjustforyou"
+    # version
+    version =               "0.0.1"
+
+# game-mode configurations
+[game_mode]
+    # whether to force the custom map package to do not load
+    force_no_map_package =  false
+    # auto destroy all entities spawned by this package when it unloads
+    auto_cleanup =          true
+    # whether to load all level entities on client
+    load_level_entities =   false
+    # the game version (major.minor) at the time this package was created
+    compatibility_version = "1.159"
+    # packages requirements
+    packages_requirements = [
+
+    ]
+    # asset packs requirements
+    assets_requirements = [
+
+    ]
+    # compatible maps - maps to be highlighted when starting a new game through main menu
+    compatible_maps = [
+        "default-blank-map",
+    ]
+
+# game-mode custom settings configurations
+[custom_settings]
