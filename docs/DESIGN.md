@@ -94,6 +94,7 @@ deathbox/
 │   ├── Index.lua        Einstieg, Spieler-Join/-Leave
 │   ├── Arena.lua        Boden, Wände, Tisch und Stühle hoch über der Map
 │   ├── Characters.lua   Figuren spawnen, wiederbeleben, ausschalten
+│   ├── Cheats.lua       Test-Cheats: Noclip, Godmode, Teleport
 │   ├── GameState.lua    Ablauf: Warten → Partie → Zug → Spielende
 │   └── Table.lua        Sitzplätze und Reihenfolge
 ├── Client/
@@ -120,6 +121,11 @@ Aktiv, solange `DEBUG_COMMANDS = true` in `Shared/Config.lua` steht. **Vor dem J
 | `/start` | Partie sofort starten |
 | `/stop` | laufende Partie abbrechen |
 | `/status` | Zustand, Bots, Lebende, Sitzordnung anzeigen |
+| Taste **B** oder `/noclip` | Fliegen und durch Wände gehen |
+| `/god` | Unverwundbar |
+| `/arena` | Zurück in die Arena teleportieren |
+
+Cheats sind für Spieler, die gerade lebend am Tisch sitzen, gesperrt. Beim Platznehmen und beim Ausscheiden werden Noclip und Godmode automatisch abgeschaltet.
 
 ## 7. Offene Punkte
 

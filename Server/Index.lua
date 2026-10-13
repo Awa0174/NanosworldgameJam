@@ -6,6 +6,7 @@ Package.Require("Arena.lua")
 Package.Require("Characters.lua")
 Package.Require("Table.lua")
 Package.Require("GameState.lua")
+Package.Require("Cheats.lua")
 
 local Game = DeathBox.Game
 local Characters = DeathBox.Characters
@@ -29,7 +30,7 @@ Player.Subscribe("Destroy", function(player)
 	Chat.BroadcastMessage("<cyan>" .. player:GetName() .. "</> hat den Tisch verlassen")
 end)
 
--- Chat-Befehle abfangen (/start, /bots, /stop, /status)
+-- Chat-Befehle abfangen (/start, /bots, /stop, /status, /god, /arena, /noclip)
 Chat.Subscribe("PlayerSubmit", function(message, player)
 	if (Game.HandleChatCommand(player, message)) then
 		return false   -- Befehl nicht als Chat-Nachricht anzeigen

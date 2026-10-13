@@ -31,6 +31,7 @@ function Characters.Kill(player)
 
 	local character = player:GetControlledCharacter()
 	if (character and not character:IsDead()) then
+		DeathBox.Cheats.Reset(character)   -- Godmode wuerde den Schuss sonst abfangen
 		-- Bewusst mehr Schaden als noetig, damit eventuelle Schadens-Multiplikatoren keine Rolle spielen
 		character:ApplyDamage(character:GetMaxHealth() * 10)
 	end
@@ -51,6 +52,7 @@ function Characters.PlaceAtSeat(player, location, rotation)
 	local character = player:GetControlledCharacter()
 	if (not character) then return end
 
+	DeathBox.Cheats.Reset(character)   -- kein Noclip/Godmode am Tisch
 	character:SetLocation(location)
 	character:SetRotation(rotation)
 	character:SetInputEnabled(false)
