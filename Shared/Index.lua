@@ -1,5 +1,8 @@
 -- Shared/Index.lua
--- Laeuft auf Server UND Client. Hier kommen spaeter gemeinsame Daten hin
--- (z. B. die Kartendefinitionen). Fuer den Anfang nur eine Konstante.
+-- Laeuft auf Server UND Client, und zwar vor Server/Index.lua bzw. Client/Index.lua.
 
-DEATHBOX_VERSION = "0.0.1"
+DeathBox = DeathBox or {}
+DeathBox.VERSION = "0.1.0"
+
+Package.Require("Config.lua")
+Package.Require("Cards.lua")

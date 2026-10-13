@@ -12,10 +12,16 @@ Regeln, Umfang und Architektur stehen in [`docs/DESIGN.md`](docs/DESIGN.md).
    ```
 3. Server neu starten. In der Konsole muss stehen:
    ```
-   [DeathBox] Server-Package geladen (Version 0.0.1)
+   [DeathBox] Server-Package geladen (Version 0.1.0)
    ```
 
 ## Stand
 
 - [x] Package lädt, Spieler spawnen, Join-/Leave-Nachricht im Chat
-- [ ] MVP: Rundenschleife mit Pistole und Sieger
+- [x] MVP-Logik: Rundenschleife, Pistole, Schutzkarte, Ausscheiden, Sieger (Ausgabe im Chat)
+- [ ] MVP im Spiel mit mehreren echten Spielern getestet
+- [ ] Kern: Kartenhand und UI
+
+## Testen allein
+
+Im Chat: `/bots 3` und danach `/start`. Weitere Befehle stehen in `docs/DESIGN.md`, Abschnitt 6.

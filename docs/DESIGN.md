@@ -20,8 +20,8 @@
 ## 3. Spielregeln (MVP)
 
 ### 3.1 Spieler
-- Mindestens **2** Spieler, maximal **[MAX SPIELER, Vorschlag: 8]**.
-- Wer während einer laufenden Partie joint, schaut zu und spielt ab der nächsten Partie mit.
+- Mindestens **2** Spieler, maximal **8** (einstellbar in `Shared/Config.lua`).
+- Ab 2 Spielern startet automatisch ein Countdown von 10 Sekunden.
 
 ### 3.2 Startaufstellung
 - Zu Beginn jeder Partie wird die Reihenfolge der Spieler **zufällig** gemischt.
@@ -31,27 +31,30 @@
 1. Es ist **reihum im Uhrzeigersinn** jeweils ein Spieler dran.
 2. Der Spieler am Zug bekommt die **Pistole**.
 3. Die Pistole **zündet nicht immer**:
-   - Chance auf Schuss: **[CHANCE, Vorschlag: 1 zu 6]**
+   - Chance auf Schuss: **1 zu 6** (einstellbar)
    - Bei Schuss: Der Spieler scheidet aus.
    - Kein Schuss: Der Spieler überlebt, der nächste ist dran.
 4. Ausgeschiedene Spieler werden übersprungen.
 
-> Offene Entscheidung: Schießt der Spieler auf **sich selbst** (reines Glück) oder darf er ein **Ziel wählen** (Strategie)?
-> MVP-Vorschlag: auf sich selbst – einfacher, keine Eingabe nötig.
+> MVP: Der Spieler schießt auf **sich selbst** (reines Glück, keine Eingabe nötig).
+> Später möglich: Ziel wählen (Strategie) – braucht eine Eingabe vom Client.
 
 ### 3.4 Karten
-- Für den MVP gibt es **eine** Karte: **[KARTENNAME]**
-- Wirkung: [WIRKUNG, Vorschlag: „Schutz – überlebt den nächsten Schuss, danach verbraucht“]
-- Wie man sie bekommt: [ERHALT, z. B. jeder Spieler startet mit einer / zufällig nach Überleben]
+- Für den MVP gibt es **eine** Karte: **[KARTENNAME]** (intern `shield`)
+- Wirkung: rettet einmal vor einem Schuss, wird **automatisch** verbraucht
+- Erhalt: jeder Spieler startet mit einer (`Config.START_CARDS`)
 
 ### 3.5 Spielende
 - Sobald nur noch **ein** Spieler lebt, hat er gewonnen.
-- Nach [WARTEZEIT, Vorschlag: 10 Sekunden] startet die nächste Partie.
+- Nach 10 Sekunden geht es zurück in die Lobby, alle werden wiederbelebt.
 
 ### 3.6 Sonderfälle
-- Spieler verlässt das Spiel während der Partie → zählt als ausgeschieden.
-- Spieler am Zug verlässt das Spiel → der nächste ist sofort dran.
-- Weniger als 2 Spieler übrig → Partie endet.
+- Spieler verlässt das Spiel während der Partie → zählt wie gestorben (ausgeschieden).
+- Spieler am Zug verlässt das Spiel → sein Zug wird abgebrochen, der nächste ist dran.
+- Nur noch 1 Spieler übrig → er gewinnt, Partie endet.
+- Spieler joint während einer Partie → wartet, bis die Partie zu Ende ist, und spielt ab der nächsten mit.
+- Spieler geht während des Countdowns und es sind zu wenige → Countdown wird abgebrochen.
+- Mehr Spieler als Plätze → die übrigen schauen zu.
 
 ## 4. Umfang in Stufen
 
@@ -71,7 +74,7 @@ Beim Jam gilt: **Lieber eine fertige Stufe abgeben als drei halbe.**
 - **Client:** zeigt nur an (UI, Kamera, Effekte) und schickt Wünsche an den Server.
 - **Shared:** gemeinsame Daten, z. B. Kartendefinitionen und Konfiguration.
 
-### 5.2 Geplante Dateien
+### 5.2 Dateien
 
 ```
 deathbox/
@@ -82,6 +85,7 @@ deathbox/
 │   └── Cards.lua        Kartendefinitionen
 ├── Server/
 │   ├── Index.lua        Einstieg, Spieler-Join/-Leave
+│   ├── Characters.lua   Figuren spawnen, wiederbeleben, ausschalten
 │   ├── GameState.lua    Ablauf: Warten → Partie → Zug → Spielende
 │   └── Table.lua        Sitzplätze und Reihenfolge
 ├── Client/
@@ -98,12 +102,22 @@ PARTIE:  ZUG ──> AUFLÖSUNG ──> nächster ZUG ...
 PARTIE ──(nur noch 1 lebt)──> SPIELENDE ──(Wartezeit)──> WARTEN
 ```
 
-## 6. Offene Punkte
+## 6. Debug-Befehle (nur zum Testen)
+
+Aktiv, solange `DEBUG_COMMANDS = true` in `Shared/Config.lua` steht. **Vor dem Jam auf `false` stellen.**
+
+| Befehl | Wirkung |
+|---|---|
+| `/bots 3` | 3 Test-Bots spielen in der nächsten Partie mit (0–7) |
+| `/start` | Partie sofort starten |
+| `/stop` | laufende Partie abbrechen |
+| `/status` | Zustand, Bots, Lebende, Sitzordnung anzeigen |
+
+## 7. Offene Punkte
 
 - [ ] Spielname, Spielleiter und Setting festlegen
-- [ ] Pistole: auf sich selbst oder Ziel wählen?
-- [ ] Schusschance festlegen
-- [ ] Die eine Karte festlegen (Name, Wirkung, Erhalt)
+- [ ] Schusschance festlegen (aktuell 1/6 in `Shared/Config.lua`)
+- [ ] Name der Karte festlegen
 - [ ] Jam-Abgabetermin eintragen: [DATUM]
 - [ ] Jam-Thema/-Regeln prüfen: [THEMA]
 - [ ] Server vor dem Jam vom `bleeding-edge`- auf den normalen Zweig umstellen (sonst kommen nur Playtest-Spieler rein)

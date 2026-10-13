@@ -1,45 +1,46 @@
 -- Server/Index.lua
--- Einstiegspunkt auf dem Server. Der Server entscheidet ueber alles (autoritativ).
+-- Einstiegspunkt auf dem Server: laedt die Module und verbindet sie mit den nanos-world-Events.
+-- Die eigentliche Spiellogik steht in GameState.lua.
 
-Console.Log("[DeathBox] Server-Package geladen (Version %s)", DEATHBOX_VERSION)
+Package.Require("Characters.lua")
+Package.Require("Table.lua")
+Package.Require("GameState.lua")
 
--- Waehlt einen Spawnpunkt der Map, sonst die Mitte der Map
-local function GetSpawnLocation()
-	local spawn_points = Server.GetMapSpawnPoints()
-	if (#spawn_points > 0) then
-		local point = spawn_points[math.random(#spawn_points)]
-		return point.location, point.rotation
-	end
-	return Vector(0, 0, 100), Rotator()
-end
+local Game = DeathBox.Game
+local Characters = DeathBox.Characters
 
--- Erzeugt einen Character und gibt dem Spieler die Kontrolle darueber
-local function SpawnPlayerCharacter(player)
-	local location, rotation = GetSpawnLocation()
-	local character = Character(location, rotation, "nanos-world::SK_Male")
-	player:Possess(character)
-end
+Console.Log("[DeathBox] Server-Package geladen (Version %s)", DeathBox.VERSION)
 
 -- Spieler betritt den Server
 Player.Subscribe("Spawn", function(player)
 	Chat.BroadcastMessage("<cyan>" .. player:GetName() .. "</> hat den Tisch betreten")
-	SpawnPlayerCharacter(player)
+	Characters.EnsureAlive(player)
+	Game.OnPlayerJoin(player)
 end)
 
--- Spieler verlaesst den Server: Character aufraeumen
+-- Spieler verlaesst den Server: zuerst die Spiellogik informieren, dann aufraeumen
 Player.Subscribe("Destroy", function(player)
-	local character = player:GetControlledCharacter()
-	if (character) then
-		character:Destroy()
-	end
+	Game.OnPlayerLeave(player)
+	Characters.Remove(player)
 	Chat.BroadcastMessage("<cyan>" .. player:GetName() .. "</> hat den Tisch verlassen")
 end)
 
--- Bei einem Package-Reload sind Spieler schon verbunden: ihnen auch einen Character geben
+-- Chat-Befehle abfangen (/start, /bots, /stop, /status)
+Chat.Subscribe("PlayerSubmit", function(message, player)
+	if (Game.HandleChatCommand(player, message)) then
+		return false   -- Befehl nicht als Chat-Nachricht anzeigen
+	end
+end)
+
+-- Package wurde (neu) geladen: bereits verbundene Spieler versorgen
 Package.Subscribe("Load", function()
 	for _, player in pairs(Player.GetPairs()) do
-		if (not player:GetControlledCharacter()) then
-			SpawnPlayerCharacter(player)
-		end
+		Characters.EnsureAlive(player)
 	end
+	Game.CheckAutoStart()
+end)
+
+-- Package wird entladen (z. B. Reload): laufenden Timer aufraeumen
+Package.Subscribe("Unload", function()
+	Game.ClearTimer()
 end)
