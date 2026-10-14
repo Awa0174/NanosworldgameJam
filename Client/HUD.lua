@@ -226,6 +226,7 @@ end
 Events.SubscribeRemote("DeathBox:Place", function(kind, info_json)
 	local info = (type(info_json) == "string" and info_json ~= "") and JSON.parse(info_json) or {}
 	if (DeathBox.Aim) then DeathBox.Aim.End("place") end
+	if (DeathBox.CameraFx) then DeathBox.CameraFx.Reset() end
 	ResetMarks()
 	DeathBox.World.Enter(kind, info)
 	CallUI("Place", kind)

@@ -95,12 +95,28 @@ function P.Reset()
 	Atmosphere.SetTension(0)
 end
 
+-- Fortschritt der Show aus dem Tischzustand: 0 = alle leben, 1 = nur noch zwei (Finale). Nach dem Ende wieder hell.
+local function DoomOf(state)
+	local total, alive = 0, 0
+	for _, s in pairs(state.seats or {}) do
+		total = total + 1
+		if (s.alive) then alive = alive + 1 end
+	end
+	if (state.phase == "ENDED" or total <= 2) then return 0 end
+	return math.max(0, math.min(1, (total - alive) / (total - 2)))
+end
+
 function P.SetState(state)
 	P.state = state
 	local tent = DeathBox.World.tent
 	if (tent and state and state.seats and state.match == DeathBox.World.match_id) then
 		local ok, err = pcall(Tent.UpdateSeats, tent, state.seats)
 		if (not ok) then Console.Warn("[DeathBox] Platz-Markierungen: %s", tostring(err)) end
+		local doom = DoomOf(state)
+		if (doom ~= Atmosphere.doom) then
+			Atmosphere.SetDoom(doom)
+			Tent.SetDoom(tent, doom)
+		end
 	end
 end
 
@@ -342,8 +358,10 @@ function Handlers.pop(tent, data)
 	data.me = IsMe(data.seat)
 	if (data.me) then
 		Atmosphere.Flash(Color(0.7, 0, 0), 0.6, 0.9)
+		DeathBox.CameraFx.Punch(0.35, 0.3)   -- DICH hat er gewaehlt: kraeftiger Ruck
 	else
 		Atmosphere.Flash(Color(1, 1, 1), 0.2, 0.4)
+		DeathBox.CameraFx.Punch(0.12, 0.2)
 	end
 end
 
@@ -975,7 +993,13 @@ function Handlers.duel_result(tent, data)
 		local gun = Gun(chair)
 		if (gun) then After(seconds, function() if (not gun.dead) then Revolver.Drop(gun, Tent.ChairFloor(tent, chair)) end end) end
 	end
-	if (data.result == "both") then
+	if (data.result == "jack") then
+		-- Finale: niemand schiesst, Jack erschiesst einen der beiden (seat)
+		Spark(data.seat_chair)
+		Audio.PlayAsset("snd_shot", 1, 0.85)
+		Jack.Laugh(tent.jack, 2)
+		DropLater(data.seat_chair, 0.3)
+	elseif (data.result == "both") then
 		-- keiner war schnell genug: Jack schiesst auf beide, die Revolver fallen
 		Spark(data.seat_chair)
 		Spark(data.seat2_chair)
@@ -1157,6 +1181,20 @@ function Handlers.card_trigger(tent, data)
 	Builder.Particle(Temp(), HeadPoint(tent, data.seat_chair) + Vector(0, 0, 40), "nanos-world::P_Sparks", Vector(0.5, 0.5, 0.5))
 end
 
+-- ---------------------------------------------------------------- Finale
+
+-- Nur noch zwei leben: Trommelwirbel, rotes Licht auf beiden, Jack lacht lange. Danach laeuft der letzte Spin normal.
+function Handlers.finale(tent, data)
+	Audio.Play("drumroll", 0.9)
+	After(0.3, function() Audio.Play("whisper_swell", 0.7) end)
+	Atmosphere.Flash(Color(0.6, 0, 0), 0.55, 1.4)
+	DeathBox.CameraFx.Punch(0.25, 0.35)
+	if (data.seat_chair) then Tent.SpotChair(tent, data.seat_chair, false) end
+	if (data.seat2_chair) then Tent.SpotChair(tent, data.seat2_chair, true) end
+	Jack.Laugh(tent.jack, 2.6)
+	After(0.4, function() Audio.Play3D("laugh", Jack.MouthPoint(tent.jack), 1, 0.7, 4500) end)
+end
+
 -- ---------------------------------------------------------------- Nachruecker
 
 -- Ein Spieler uebernimmt den Platz eines Bots (zu Beginn einer Runde): kurzes Funkeln, Namensschild steigt auf
@@ -1182,6 +1220,7 @@ function Handlers.death(tent, data)
 	After(2.2, function() Tent.SpotChair(tent, nil) end)
 	Audio.Play("sting", 0.65)
 	Atmosphere.Flash(Color(0.55, 0, 0), 0.5, 1.0)
+	if (not IsMe(data.seat)) then DeathBox.CameraFx.Punch(0.2, 0.25) end   -- wer selbst stirbt, faellt ohnehin
 	-- Totenglocke nur fuers Opfer, kurz NACH dem Schock-Akkord, damit sich beide nicht gegenseitig verdecken
 	if (IsMe(data.seat)) then After(0.3, function() Audio.Play("death_toll", 1.0) end) end
 	After(0.6, function()

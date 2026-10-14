@@ -26,7 +26,8 @@ Stuhl-Reihenfolge: aufsteigend = im Uhrzeigersinn (Revolver-Weitergabe), ±1 = N
 { match, phase: "STARTING"|"PLAYING"|"ENDED", seat_count, turn, winner, jack_yaw,
   round, stage: "intro"|"spin"|"skip"|"pop"|"card"|"event"|"result"|"ended",
   timer: {total, remaining}?,
-  seats: [ { seat, chair, angle, name, id (Player-ID oder -1), bot, alive, cards (Anzahl) } ],
+  seats: [ { seat, chair, angle, name, id (Player-ID oder -1), bot, alive, cards (Anzahl),
+             avatar? (Menschen: Steam-Bild "steam-avatar://<Ziffern>"), portrait? (Bots: 1..12 = img/portraits/botNN.png) } ],
   joining: [Player-ID],   -- Nachrücker: schauen im Zelt zu, übernehmen zu Beginn der nächsten Runde einen Bot-Platz (v0.11)
   event: { id, name, actors:[seat], awaiting:[seat], involved:[seat], focus, instruction_actor, instruction_others, final?,
            endangered?:[seat], data:{...} }? }
@@ -165,7 +166,7 @@ Plätze, die nicht mehr leben, werden abgelehnt.
 | `bomb_result` | `seat, defused, wire` | entschärft (LED grün) oder BOOM | Ergebnis |
 | `duel_start` | `seat, seat2, name, name2` | zwei Spots, Stille, Herzschlag | „QUICK DRAW: A vs B“ |
 | `duel_draw` | `seat, seat2` | Glocke, Blitz | riesiges „DRAW!“ (die Taste kommt als `qte`-Abfrage mit label "DRAW!") |
-| `duel_result` | `seat, seat2, result ("win"/"misfire"/"both")` | Treffer | bei win: seat = Sieger, seat2 = Verlierer („YOU were faster · fires at Bonzo“ – ob er getroffen ist, entscheiden erst Ricochet/Safety); misfire: seat = Pechvogel. Ein Querschläger (`ricochet`) trifft wie beim Revolver erst `RICOCHET_TIME` später, die Stage-Zeile nennt danach das Opfer („BANG! X is OUT“) |
+| `duel_result` | `seat, seat2, result ("win"/"misfire"/"both"/"jack")` | Treffer | bei win: seat = Sieger, seat2 = Verlierer („YOU were faster · fires at Bonzo“ – ob er getroffen ist, entscheiden erst Ricochet/Safety); misfire: seat = Pechvogel. Ein Querschläger (`ricochet`) trifft wie beim Revolver erst `RICOCHET_TIME` später, die Stage-Zeile nennt danach das Opfer („BANG! X is OUT“) |
 | `deal` | `seats:[seat], count` (Empfänger, aufsteigend; volle Hände werden übersprungen) | Karten fliegen | „N PLAYERS WILL NOW BE GIVEN CARDS“ |
 | `card_gain` | `seat, count` | Karte fliegt zum Spieler (Choose a Card: die mittlere der drei schwebenden Karten, die anderen zurück in die Kiste; `/card`: aus der Kiste) | Toast „X takes a card“ |
 | `card_play` | `seat, card, target` | Karte leuchtet über dem Spieler | Toast „X used THIEF on Y“ |
@@ -174,6 +175,7 @@ Plätze, die nicht mehr leben, werden abgelehnt.
 | `survive` | `seat, name` | Posaune, Jack enttäuscht | „SURVIVED“ — am Ende eines Events (ausgewichen, gelöscht, geblockt, Safety, verschont, Duell kampflos gewonnen). Nicht bei Revolver-Klicks |
 | `round_end` | `round, alive, out:[seat], survived:[seat], left?:[seat]` — `out` = in dieser Runde ausgeschieden (inkl. Gegangene), `left` = davon gegangen (fehlt, wenn leer), `survived` = war in dieser Runde in Gefahr (anvisiert, beschossen, Messer, Feuer, Hackbeil, Abstimmung, Kürbis gehalten, Bombe, Duell) und lebt noch, `alive` = Lebende danach | Highlights aus | Rundenergebnis-Karte „ROUND 7 – Bonzo is OUT · 12 left“. Kommt nach **jedem** Event direkt vor `RESULT_PAUSE` (2,5 s), auch vor `winner` |
 | `winner` | `seat, name` (seat 0 = niemand) | Spot, Konfetti | Sieger-Plakat |
+| `finale` | `seat, seat2` — nur noch zwei leben (einmal pro Show, direkt vor dem letzten Spin). Danach immer `Config.FINALE_EVENT` (Duell) mit Karte „Final Showdown“; drückt keiner, zieht Jack bis zu `FINALE_REDRAWS`-mal neu (Stage `again`), dann `duel_result` mit `result = "jack"` (seat = Getroffener) | Trommelwirbel, rote Spots auf beiden, Jack lacht, Kamera-Ruck | großes „FINAL SHOWDOWN“ + Ansage |
 | `seat_taken` | `seat, name, old` — Nachrücker `name` übernimmt den Bot-Platz `seat` von `old`. Kommt zu Beginn einer Runde direkt vor `spin`, NACH dem State (wer sitzt wo) | Funkeln, Schild „NEW: name“ steigt auf | Toast „name takes the seat of old“ (nicht für ihn selbst) |
 | `you_joined` | `seat, old, cards` — nur an den Nachrücker (`Net.ShowTo`) | goldener Blitz, Sting | großes „YOU'RE IN!“ + Toast „You took old's seat · N cards, press C“ |
 

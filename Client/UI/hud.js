@@ -255,6 +255,12 @@
 		DUEL_FOOT: "Wrong key · right in the foot",
 		DUEL_BOTH: "Too slow!",
 		DUEL_BOTH_SUB: "Jack shoots them both",
+		DUEL_JACK: "Jack loses his patience",
+		DUEL_JACK_SUB: (name) => `…and shoots ${name}`,
+		FINALE_WORD: "FINAL SHOWDOWN",
+		FINALE_KICKER: "Only two left",
+		FINALE_MAIN: (a, b) => `${a} vs ${b}`,
+		FINALE_SUB: "The winner takes the show",
 
 		// Deal / Karten
 		DEAL_KICKER: "Jack is feeling generous",
@@ -339,7 +345,7 @@
 	const SVG_NS = "http://www.w3.org/2000/svg";
 	// Cues, die ein laufendes Gluecksrad NICHT beenden (koennen jederzeit kommen, z. B. Karte waehrend des Drehens;
 	// death waehrend des Drehens = jemand hat die Show verlassen, left = true)
-	const KEEP_SPIN = new Set(["card_play", "card_gain", "card_trigger", "point", "death", "seat_taken", "you_joined"]);
+	const KEEP_SPIN = new Set(["card_play", "card_gain", "card_trigger", "point", "death", "seat_taken", "you_joined", "finale"]);
 	// nur 3D/Ton (Client/Presentation.lua), das HUD zeigt dazu nichts Eigenes
 	const SILENT_CUES = new Set(["point", "knife_raise", "knife_throw", "fire_breath", "fire_off", "stab_raise", "stab_strike"]);
 
@@ -1315,10 +1321,26 @@
 
 	// Eine Zeile pro Platz. Zeilen bleiben bestehen (keine Neuerzeugung bei jedem State),
 	// damit Animationen (Gluecksrad, Tod) nicht abbrechen.
+	// Bild in der Spielerliste: Steam-Profilbild (nur steam-avatar://<Ziffern>), Clown-Portraet fuer Bots, sonst Ersatz.
+	// Nie eine beliebige Adresse vom Server uebernehmen (SICHERHEIT wie bei den Kartenbildern).
+	const AVATAR_URL = /^steam-avatar:\/\/\d{1,25}$/;
+	const GUEST_PIC = "img/portraits/guest.png";
+	function seatPic(s) {
+		if (typeof s.avatar === "string" && AVATAR_URL.test(s.avatar)) return s.avatar;
+		const n = Number(s.portrait);
+		if (Number.isInteger(n) && n >= 1 && n <= 12) return `img/portraits/bot${String(n).padStart(2, "0")}.png`;
+		return GUEST_PIC;
+	}
+
 	function makeRow(seat) {
 		const li = el("li", "seat");
 		li.dataset.seat = String(seat);
 		const stub = el("span", "stub");
+		const pic = document.createElement("img");
+		pic.className = "pic";
+		pic.alt = "";
+		pic.onerror = () => { if (!pic.src.endsWith(GUEST_PIC)) pic.src = GUEST_PIC; };   // Steam-Bild nicht ladbar
+		stub.appendChild(pic);
 		stub.appendChild(el("span", "candle"));
 		stub.appendChild(el("span", "cross"));
 		const name = el("span", "name");
@@ -1333,7 +1355,7 @@
 		li.appendChild(hold);
 		li.appendChild(mark);
 		li.appendChild(cards);
-		return { li, text, cards, alive: true, cardCount: -1 };
+		return { li, text, cards, pic, picSrc: "", alive: true, cardCount: -1 };
 	}
 
 	function renderSeats(me) {
@@ -1382,6 +1404,11 @@
 
 			const name = String(s.name);
 			if (row.text.textContent !== name) row.text.textContent = name;
+			const src = seatPic(s);
+			if (row.picSrc !== src) {   // nur bei Aenderung (z. B. Nachruecker uebernimmt einen Bot)
+				row.picSrc = src;
+				row.pic.src = src;
+			}
 			const li = row.li;
 			li.classList.toggle("dead", !s.alive);
 			li.classList.toggle("just-died", recent(s));
@@ -1833,6 +1860,7 @@
 			case "card_play": cueCardPlay(data); break;
 			case "card_trigger": cueCardTrigger(data); break;
 			case "seat_taken": cueSeatTaken(data); break;
+			case "finale": cueFinale(data); break;
 			case "you_joined": cueYouJoined(data); break;
 			default: console.warn("[DeathBox] Unknown show cue", action);
 		}
@@ -2461,6 +2489,11 @@
 			spec.main = TEXT.DUEL_MISFIRE(who(a));
 			spec.sub = TEXT.DUEL_FOOT;
 			spec.tone = isMe(a) ? "danger" : "";
+		} else if (data.result === "jack") {
+			// Finale ohne Schuss: Jack waehlt selbst (seat = getroffen)
+			spec.main = TEXT.DUEL_JACK;
+			spec.sub = TEXT.DUEL_JACK_SUB(who(a));
+			spec.tone = isMe(a) ? "danger" : isMe(b) ? "luck" : "";
 		} else {
 			spec.main = TEXT.DUEL_BOTH;
 			spec.sub = TEXT.DUEL_BOTH_SUB;
@@ -2483,6 +2516,21 @@
 			ms: 3000,
 		});
 		seats.forEach((seat, i) => after("deal", 140 * i, () => flashRow(seat, "dealt")));
+	}
+
+	// Finale: nur noch zwei leben (kommt einmal pro Show direkt vor dem letzten Spin)
+	function cueFinale(data) {
+		const a = Number(data.seat);
+		const b = Number(data.seat2);
+		word(TEXT.FINALE_WORD, "finale", 3);
+		banner({
+			kicker: TEXT.FINALE_KICKER,
+			main: TEXT.FINALE_MAIN(who(a), who(b)),
+			sub: TEXT.FINALE_SUB,
+			detail: `${TEXT.FINALE_KICKER} · ${TEXT.FINALE_MAIN(who(a), who(b))} · ${TEXT.FINALE_SUB}`,
+			tone: isMe(a) || isMe(b) ? "danger" : "gold",
+			ms: 4000,
+		});
 	}
 
 	// Nachruecker uebernimmt einen Bot-Platz (alle am Tisch)

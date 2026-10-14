@@ -96,15 +96,24 @@ Ausgangsstand war v0.10.0 des Owners, umgesetzt ist das in **v0.11.0**. Für den
 - [x] **Zelt:** Glühbirnen werden nur noch bei einer Stimmungsänderung gesetzt. Nebenbei behoben: Birnen blieben vorher bei 95 % hängen.
 - [x] **Schatten aus:** beim Mond-Spot (Hub) und beim zweiten Ziel-Spot (Zelt). Der Bodennebel ist kleiner.
 
+## Erledigt in v0.12 (Spannung und Reaktionen)
+- [x] Bilder in der Spielerliste statt Kerzen (Steam-Bild bzw. 12 Clown-Porträts für Bots, Bildadresse wird geprüft)
+- [x] Zelt wird mit jedem Toten dunkler und röter (`Atmosphere.SetDoom`, `Tent.SetDoom`)
+- [x] Kamera-Ruck über den Spring-Arm (`Client/CameraFx.lua`; `Player:SetCameraFOV` wirkt laut API nicht mit Figur)
+- [x] Festes Finale bei 2 Lebenden (`Config.FINALE_EVENT`, `FINALE_REDRAWS`), immer mit Sieger
+
+**Testplan dazu:** (9) Spielerliste: eigenes Steam-Bild sichtbar? (10) Zelt wird bei jedem Toten spürbar dunkler, im
+Finale noch lesbar? (11) Kamera-Ruck beim POP: angenehm oder zu stark (`db_punch 0.5` / `1.5` ausprobieren)?
+(12) Finale mit 2 Menschen: beide drücken nicht → „AGAIN!“, danach wählt Jack.
+
 ## Offen (optional, nach Priorität)
 
 1. **Grafik einstellen:**
    - An einem Abend auf 2 PCs mit `db_exposure`, `db_light`, `db_look` die Werte finden und fest eintragen.
    - `Client.SetSettingGammaOverride` (`Client/Atmosphere.lua`) überschreibt die Helligkeit der Spieler. Auf einem dunklen Monitor prüfen.
-2. **Kamera-Effekt:** Ein kurzer FOV-Ruck beim POP oder bei einem Tod (`Player:SetCameraFOV`).
-3. **Farb-LUT** über `PostProcess.SetLookupTable`.
-4. „How to play“ dauerhaft im Hub anzeigen.
-5. **Nicht vor dem Jam:** `hud.js` und `style.css` aufteilen.
+2. **Farb-LUT** über `PostProcess.SetLookupTable`.
+3. „How to play“ dauerhaft im Hub anzeigen.
+4. **Nicht vor dem Jam:** `hud.js` und `style.css` aufteilen.
 
 ## Testplan (im Spiel, bitte mit 2–3 Leuten)
 

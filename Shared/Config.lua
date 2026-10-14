@@ -75,6 +75,9 @@ DeathBox.Config = {
 	-- ===============================================================
 	EVENT_PHASES = { HUGE = 17, MANY = 9, MID = 5 },
 	FIRST_EVENT = "revolver",   -- erste Runde jeder Show (das Aushaengeschild, erklaert das Spiel); nil = Zufall
+	-- Finale: Leben nur noch zwei, kommt immer dieses Event (eigene Karte "Final Showdown", rotes Licht). nil = Zufall.
+	FINALE_EVENT = "duel",
+	FINALE_REDRAWS = 2,         -- Finale-Duell: drueckt keiner, zieht Jack bis zu so oft neu, dann waehlt er selbst
 	-- v0.11 (Jam, 8er-Tische): nur noch die Spalten "mittel" (5-8 Lebende) und "wenige" (2-4) sind im Spiel.
 	-- Abgeschaltet (0): stab, bomb, splitsteal, choosecard - fuer fremde Spieler unter Zeitdruck schwer zu verstehen
 	-- (Regeltext lesen, zwei Stufen, Absprache in einer Fremdsprache) oder niemand stirbt. Der Code bleibt, /event geht.

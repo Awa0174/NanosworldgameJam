@@ -1046,6 +1046,35 @@ body.modal #versus, body.modal #vote.watch { visibility: hidden; }
 #circle.many .seat .tag { padding: 0 0.22rem; font-size: max(0.6rem, 11px); line-height: 1.1; letter-spacing: 0.06em; }
 #circle.many .seat .mark { flex-basis: 0.8rem; width: 0.8rem; height: 0.8rem; }
 
+
+/* ================================================================== v0.11: Bilder in der Spielerliste
+   Statt der Kerze: Steam-Profilbild bzw. Clown-Portraet (Bots). Lebt = farbig mit Goldrand, dran = Papier + heller Rand,
+   im Visier = roter Rand, tot = grau mit rotem Kreuz darueber. Die Kerze bleibt als kleines Flaemmchen am Bild. */
+#circle { --row: 2.6rem; }
+.seat .stub { flex-basis: 2.6rem; margin-right: 0.55rem; padding: 0.18rem 0 0.18rem 0.18rem; border-right: none; }
+.seat .pic {
+	display: block;
+	width: calc(var(--row) - 0.36rem); height: calc(var(--row) - 0.36rem);
+	object-fit: cover;
+	border-radius: 0.18rem;
+	box-shadow: 0 0 0 2px rgba(198, 156, 69, 0.85), 0 0 0 3px rgba(18, 10, 8, 0.9), 0 2px 4px rgba(0, 0, 0, 0.7);
+	transition: filter 400ms ease, box-shadow 200ms ease;
+}
+.seat .candle { position: absolute; right: -0.12rem; bottom: 0.12rem; margin: 0; transform: scale(0.7); transform-origin: 50% 100%; }
+.seat .cross { position: absolute; left: 50%; top: 50%; margin: -0.45rem 0 0 -0.45rem; transform: scale(1.5); }
+.seat.dead .pic { filter: grayscale(1) brightness(0.45) contrast(1.1); box-shadow: 0 0 0 2px rgba(236, 225, 200, 0.18), 0 0 0 3px rgba(18, 10, 8, 0.9); }
+.seat.turn .pic, .seat.spin-lit .pic { box-shadow: 0 0 0 2px var(--gold-hi), 0 0 0 3px rgba(18, 10, 8, 0.9), 0 0 0.7rem rgba(236, 200, 115, 0.8); }
+.seat.aimed .pic, .seat.spin-victim .pic { box-shadow: 0 0 0 2px var(--blood-hi), 0 0 0 3px rgba(18, 10, 8, 0.9), 0 0 0.8rem rgba(220, 39, 45, 0.85); }
+.seat.you .pic { box-shadow: 0 0 0 2px var(--paper-hi), 0 0 0 3px var(--blood), 0 2px 4px rgba(0, 0, 0, 0.7); }
+.seat.just-died .pic { animation: pic-die 900ms ease-out both; }
+@keyframes pic-die {
+	0% { filter: grayscale(0) brightness(1.6) sepia(1) hue-rotate(-50deg) saturate(4); }
+	100% { filter: grayscale(1) brightness(0.45) contrast(1.1); }
+}
+#circle.many { --row: clamp(1.15rem, calc((88vh - 5.6rem) / var(--rows, 16) - var(--gap)), 1.7rem); }
+#circle.many .seat .stub { flex-basis: var(--row); padding: 0.1rem 0 0.1rem 0.1rem; }
+#circle.many .seat .pic { width: calc(var(--row) - 0.2rem); height: calc(var(--row) - 0.2rem); }
+
 /* ================================================================== Mitte: Ereigniswort */
 
 #word {
@@ -3780,3 +3809,13 @@ button.bigcard:disabled { cursor: default; }
 	#turn-word { font-size: 3.8rem; }
 	#jack-text { font-size: 1.5rem; }
 }
+
+/* v0.11: Finale */
+#word.finale {
+	font-family: var(--f-title);
+	font-size: 6.4rem;
+	letter-spacing: 0.05em;
+	color: var(--blood-hi);
+	text-shadow: -2px -2px 0 var(--ink), 2px 2px 0 var(--ink), 0.05em 0.055em 0 #2a0406, 0 0 0.6em rgba(220, 39, 45, 0.75);
+}
+#word.finale.show { animation: word-slam 2.6s cubic-bezier(.3, 0, .3, 1) forwards; }

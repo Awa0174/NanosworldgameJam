@@ -35,7 +35,15 @@ local BOT_NAMES = {
 	"Tickles", "Wiggles", "Bingo", "Cuddles", "Gizmo", "Lolli", "Muffin",
 }
 
-local STATE = { INTRO = "STARTING", PLAYING = "PLAYING", ENDED = "ENDED" }   -- "STARTING" = Name im HUD
+local STATE = { INTRO = "STARTING", PLAYING = "PLAYING", ENDED = "ENDED" }
+local PORTRAITS = 12   -- Client/UI/img/portraits/bot01..bot12.png (Clown-Portraets der Bots in der Spielerliste)
+
+-- Steam-Profilbild eines Spielers fuer die Spielerliste (nur Format steam-avatar://<Ziffern>, sonst keins)
+local function AvatarOf(player)
+	local ok, url = pcall(function() return player:GetAccountIconURL() end)
+	if (ok and type(url) == "string" and string.match(url, "^steam%-avatar://%d+$")) then return url end
+	return nil
+end   -- "STARTING" = Name im HUD
 local ATAN2 = math.atan2 or math.atan   -- Lua 5.1 (Simulation) / 5.4 (nanos)
 
 -- Felder in Regieanweisungen, die einen Platz meinen: der Client bekommt zusaetzlich die Stuhl-Nummer
@@ -97,11 +105,15 @@ function Match.Create(players, bot_count)
 	for _, name in ipairs(BOT_NAMES) do table.insert(names, name) end
 	Shuffle(names)
 
+	local portraits = {}
+	for i = 1, PORTRAITS do portraits[i] = i end
+	Shuffle(portraits)
 	for _, player in ipairs(players) do
-		table.insert(match.seats, { name = player:GetName(), player = player, is_bot = false, alive = true, cards = {} })
+		table.insert(match.seats, { name = player:GetName(), player = player, is_bot = false, alive = true, cards = {}, avatar = AvatarOf(player) })
 	end
 	for i = 1, bot_count do
-		table.insert(match.seats, { name = names[i] or ("Bot " .. i), player = nil, is_bot = true, alive = true, cards = {} })
+		table.insert(match.seats, { name = names[i] or ("Bot " .. i), player = nil, is_bot = true, alive = true, cards = {},
+			portrait = portraits[((i - 1) % PORTRAITS) + 1] })
 	end
 	Shuffle(match.seats)
 
@@ -353,6 +365,8 @@ function Match:TakeOverSeat(player, index)
 	seat.player = player
 	seat.is_bot = false
 	seat.name = player:GetName()
+	seat.avatar = AvatarOf(player)
+	seat.portrait = nil
 
 	local location, rotation, look = Layout.SitTransform(seat.chair, self.seat_count)
 	local character = player:GetControlledCharacter()
@@ -480,7 +494,20 @@ function Match:Spin()
 		return
 	end
 
-	local def = EventSystem.Pick(#alive, self.last_event_id, self.forced_event)
+	local def
+	-- Finale: nur noch zwei am Leben -> immer das Finale-Event (Config.FINALE_EVENT), auch wenn es sonst mehr Lebende
+	-- braucht (Duell: min_alive 3, damit es vorher nie die Show beendet). /event geht weiterhin vor.
+	local finale_def = Config.FINALE_EVENT and EventSystem.registry[Config.FINALE_EVENT]
+	if (#alive == 2 and finale_def and not self.forced_event and #alive >= finale_def.actors) then
+		def = finale_def
+		if (not self.finale) then
+			self.finale = true
+			self:Show("finale", { seat = alive[1], seat2 = alive[2] })
+			self:Say(Text.Format(Text.JACK.FINALE, { name = self.seats[alive[1]].name, target = self.seats[alive[2]].name }))
+		end
+	else
+		def = EventSystem.Pick(#alive, self.last_event_id, self.forced_event)
+	end
 	self.forced_event = nil
 	if (not def or #alive < def.actors) then
 		self:End()
@@ -603,6 +630,13 @@ function Match:ShowEventCard(def, actors)
 	-- Karte: Name, wer, 2-3 Stichpunkte, "YOU: ..." (fuer die Gewaehlten bzw. alle anderen). Beim ersten Mal laenger.
 	local texts = Text.EVENTS[def.id] or {}
 	local first = not self.seen_events[def.id]
+	-- Finale: eigene Karte (Text.EVENTS.<id>.finale ersetzt einzelne Felder), immer in voller Laenge
+	if (self.finale and def.id == Config.FINALE_EVENT and texts.finale) then
+		local merged = {}
+		for key, value in pairs(texts) do merged[key] = value end
+		for key, value in pairs(texts.finale) do merged[key] = value end
+		texts, first = merged, true
+	end
 	local card_time = first and Config.CARD_TIME or Config.CARD_TIME_REPEAT
 	self.seen_events[def.id] = true
 	local values = { name = self.seats[actors[1]].name, name2 = actors[2] and self.seats[actors[2]].name or nil }
@@ -865,6 +899,8 @@ function Match:BuildSnapshot()
 			bot = seat.is_bot,
 			alive = seat.alive,
 			cards = #seat.cards,
+			avatar = seat.avatar,       -- Steam-Profilbild (steam-avatar://...), nur bei Menschen
+			portrait = seat.portrait,   -- Clown-Portraet 1..12, nur bei Bots
 		})
 	end
 	local joining = {}

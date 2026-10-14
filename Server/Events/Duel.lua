@@ -41,6 +41,8 @@ local function Hit(ctx, index, on_landed)
 	end)
 end
 
+local Draw   -- Vorwaertsdeklaration (das Finale zieht aus der Abfrage heraus neu)
+
 local function Resolve(ctx, winner, loser, how)
 	if (ctx.data.over) then return end
 	ctx.data.over = true
@@ -53,7 +55,14 @@ local function Resolve(ctx, winner, loser, how)
 		if (flying == 0) then ctx:Conclude(CFG.RESULT_TIME) end
 	end
 
-	if (how == "both") then
+	if (how == "jack") then
+		-- Finale: auch nach dem Neu-Ziehen drueckt keiner -> Jack verliert die Geduld und erschiesst EINEN (Zufall)
+		ctx:Show("duel_result", { seat = loser, seat2 = winner, result = "jack" })
+		ctx:Stage("bored", { loser = ctx:Name(loser), winner = ctx:Name(winner) })
+		ctx:Say(Text.JACK.DUEL_BORED, { name = ctx:Name(loser) })
+		ctx:Fx("bang", loser)
+		Hit(ctx, loser, Landed)
+	elseif (how == "both") then
 		ctx:Show("duel_result", { seat = a, seat2 = b, result = "both" })
 		ctx:Stage("both")
 		ctx:Say(Text.JACK.DUEL_BOTH)
@@ -79,7 +88,7 @@ local function Resolve(ctx, winner, loser, how)
 	end
 end
 
-local function Draw(ctx)
+Draw = function(ctx)
 	local prompt = RandomKey()
 	ctx.data.prompt = prompt
 	ctx.data.drawn = true
@@ -88,9 +97,24 @@ local function Draw(ctx)
 
 	for _, index in ipairs(ctx.actors) do
 		ctx:Ask(index, "qte", Config.QTE_KEYS, CFG.WINDOW, function()
-			-- Zeitlimit fuer diesen Spieler; wenn beide nichts gedrueckt haben, sterben beide
+			-- Zeitlimit fuer diesen Spieler; wenn beide nichts gedrueckt haben, sterben beide.
+			-- Im Finale nie: dann haette die Show keinen Sieger. Jack zieht neu, zuletzt waehlt er selbst.
 			if (not ctx.data.over and not ctx:IsAsking(Other(ctx, index))) then
-				Resolve(ctx, nil, nil, "both")
+				if (ctx.match.finale) then
+					ctx.data.redraws = (ctx.data.redraws or 0) + 1
+					if (ctx.data.redraws <= (Config.FINALE_REDRAWS or 0)) then
+						ctx.data.drawn = false
+						ctx:Stage("again", nil, ctx.actors)
+						ctx:Say(Text.JACK.DUEL_AGAIN)
+						ctx:Push()
+						ctx:After(ctx:Between(CFG.WAIT), function() Draw(ctx) end)
+					else
+						local loser = ctx.actors[math.random(2)]
+						Resolve(ctx, Other(ctx, loser), loser, "jack")
+					end
+				else
+					Resolve(ctx, nil, nil, "both")
+				end
 			end
 		end, {
 			prompt = prompt,

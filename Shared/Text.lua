@@ -238,6 +238,18 @@ DeathBox.Text = {
 			"Too slow, BOTH of you. Jack hates waiting.",
 			"Nobody fired? Then Jack does it for you!",
 		},
+		DUEL_AGAIN = {
+			"Nobody fired?! Again! And this time, SHOOT!",
+			"Jack will NOT accept a draw. Again!",
+		},
+		DUEL_BORED = {
+			"Jack is bored. Eeny, meeny... {name}! BANG!",
+			"Fine. Jack picks the loser himself: {name}!",
+		},
+		FINALE = {
+			"Only two left... {name} and {target}. THE FINAL SHOWDOWN!",
+			"Ladies and gentlemen... the grand finale! {name} versus {target}!",
+		},
 		DUEL_FLED = {
 			"{name} ran from the duel. {target} wins without a shot.",
 		},
@@ -511,6 +523,19 @@ DeathBox.Text = {
 			},
 			you_actor = "YOU: wait for DRAW!, then press the key FAST.",
 			you_others = "YOU: just watch.",
+			-- Finale (nur noch zwei leben, Config.FINALE_EVENT): diese Felder ersetzen die normale Karte
+			finale = {
+				name = "Final Showdown",
+				tagline = "Two left. One leaves the tent alive.",
+				who = "{name} vs {name2} - for the win",
+				how = {
+					"Wait for DRAW! - then press the key that appears.",
+					"The faster one wins the whole show.",
+					"Nobody fires? Jack makes you draw again.",
+				},
+				you_actor = "YOU: win this and you win the show. Wait for DRAW!",
+				you_others = "YOU: watch the grand finale.",
+			},
 			instruction_actor = "Wait for it...",
 			instruction_others = "{name} and {name2} face each other",
 			stage = {
@@ -519,6 +544,8 @@ DeathBox.Text = {
 				win = "{winner} wins the duel - {loser} is hit",
 				misfire = "{loser} pressed the wrong key...",
 				both = "Too slow - Jack shoots BOTH!",
+				again = { actor = "AGAIN! Wait for DRAW!, then press the key", others = "Nobody fired - Jack makes them draw again..." },
+				bored = "Jack loses his patience and shoots {loser}!",
 				fled = "{loser} ran - {winner} wins without a shot",
 			},
 		},

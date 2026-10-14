@@ -314,10 +314,20 @@ end
 -- Stimmungen: "normal", "spin" (gedimmt), "hold" (fast dunkel), "reveal", "death" (Flackern)
 function Tent.SetMood(tent, mood)
 	tent.mood = mood
-	if (mood == "spin") then tent.dim_target = 0.55
-	elseif (mood == "hold") then tent.dim_target = 0.25
-	elseif (mood == "death") then tent.dim_target = 0.15
-	else tent.dim_target = 1 end
+	local base
+	if (mood == "spin") then base = 0.55
+	elseif (mood == "hold") then base = 0.25
+	elseif (mood == "death") then base = 0.15
+	else base = 1 end
+	-- Je weiter die Show, desto dunkler das Zelt (Tent.SetDoom): im Finale nur noch ~45 % Grundlicht
+	tent.dim_target = base * (1 - 0.55 * (tent.doom or 0))
+end
+
+-- Fortschritt der Show 0..1 (Client/Presentation.lua aus dem Tischzustand)
+function Tent.SetDoom(tent, doom)
+	if (tent.doom == doom) then return end
+	tent.doom = doom
+	Tent.SetMood(tent, tent.mood or "normal")
 end
 
 -- Roter Spot auf einen Stuhl (nil = aus). second = true nutzt den zweiten Spot.

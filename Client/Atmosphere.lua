@@ -13,6 +13,8 @@ DeathBox.Atmosphere = {
 	exposure = { 1, -1.5, 3 },
 	look = { vignette = 0.8, grain = 0.25, saturation = 0.82 },
 	tension = 0,
+	doom = 0,          -- 0..1: wie weit die Show ist (0 = alle leben, 1 = Finale). Grundspannung + Rotstich (v0.11)
+	doom_shown = 0,    -- gerade angezeigter Wert (wird weich nachgefuehrt)
 	sky_ready = false,
 }
 
@@ -50,12 +52,49 @@ function Atmosphere.Apply(kind)
 	PostProcess.SetGlobalGain(Color(1.04, 0.98, 0.92, 1))
 	PostProcess.SetFilm(0.8, 0.6, 0.26, 0.01, 0.3)
 	Sky.SetFog(kind == "hub" and 28 or 6)
+	Atmosphere.SetDoom(0, true)
 	Atmosphere.SetTension(0)
+end
+
+-- Farbton des Bildes: mit wachsendem doom waermer und roter (das Zelt "blutet" aus)
+local function ApplyGain()
+	local d = Atmosphere.doom_shown
+	PostProcess.SetGlobalGain(Color(1.04 + 0.10 * d, 0.98 - 0.16 * d, 0.92 - 0.22 * d, 1))
+end
+
+-- Fortschritt der Show (0..1). Jeder Tote macht das Zelt dunkler und roter: Spannung, auch fuer die, die gerade
+-- nicht dran sind. Uebergang ueber ~1,5 s; instant = sofort (Ortswechsel).
+function Atmosphere.SetDoom(doom, instant)
+	doom = math.max(0, math.min(1, tonumber(doom) or 0))
+	Atmosphere.doom = doom
+	if (Atmosphere.doom_timer and Timer.IsValid(Atmosphere.doom_timer)) then Timer.ClearInterval(Atmosphere.doom_timer) end
+	Atmosphere.doom_timer = nil
+	if (instant) then
+		Atmosphere.doom_shown = doom
+		ApplyGain()
+		Atmosphere.SetTension(Atmosphere.tension)
+		return
+	end
+	Atmosphere.doom_timer = Timer.SetInterval(function()
+		local diff = Atmosphere.doom - Atmosphere.doom_shown
+		if (math.abs(diff) < 0.01) then
+			Atmosphere.doom_shown = Atmosphere.doom
+		else
+			Atmosphere.doom_shown = Atmosphere.doom_shown + diff * 0.12
+		end
+		ApplyGain()
+		Atmosphere.SetTension(Atmosphere.tension)
+		if (Atmosphere.doom_shown == Atmosphere.doom and Atmosphere.doom_timer) then
+			Timer.ClearInterval(Atmosphere.doom_timer)   -- ausdruecklich beenden (nicht auf "return false" verlassen)
+			Atmosphere.doom_timer = nil
+		end
+	end, 50)
 end
 
 -- Anspannung 0..1: mehr Vignette, Farbsaum, weniger Farbe. Wird waehrend der Auswahl hochgefahren.
 function Atmosphere.SetTension(level)
 	Atmosphere.tension = level
+	level = math.max(level, 0.4 * (Atmosphere.doom_shown or 0))   -- Grundspannung aus dem Fortschritt der Show
 	local look = Atmosphere.look
 	PostProcess.SetImageEffects(math.min(1.6, look.vignette + 0.6 * level), look.grain + 0.2 * level)
 	PostProcess.SetChromaticAberration(0.06 + 0.55 * level, 0.45)

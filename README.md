@@ -17,8 +17,19 @@ Regeln, Umfang und Architektur: [`docs/DESIGN.md`](docs/DESIGN.md) · Zeitplan: 
    (Die Welt liegt auf Z = 20000 und schwebt auch über der Testing-Map frei, sie funktioniert also mit beiden Maps.)
 4. Server neu starten. In der Konsole muss stehen:
    ```
-   [DeathBox] Server-Package geladen (Version 0.11.0)
+   [DeathBox] Server-Package geladen (Version 0.12.0)
    ```
+
+## Stand (0.12.0, 14.10. abends) – Spannung und Reaktionen
+
+- [x] **Bilder statt Kerzen** in der Spielerliste: Steam-Profilbild (Menschen), eigene Clown-Porträts (Bots).
+      Tot = grau mit rotem Kreuz, dran = Goldrand, im Visier = roter Rand.
+- [x] **Das Zelt wird mit jedem Toten dunkler und röter** (Licht, Farbton, Vignette) – im Finale nur noch Jacks Spot.
+- [x] **Kamera-Ruck** beim POP (stärker, wenn DU gewählt wirst), bei einem Tod und beim Finale. Nie, während du eine
+      Eingabe machen musst. Konsole: `db_punch <0..2>` (0 = aus).
+- [x] **Festes Finale:** Leben nur noch zwei, kommt immer das Duell als „Final Showdown“ (eigene Karte, rote Spots,
+      Trommelwirbel). Drückt keiner, zieht Jack bis zu zweimal neu und wählt dann selbst – jede Show hat einen Sieger.
+- [ ] Im Spiel prüfen: wirkt der Kamera-Ruck (Spring-Arm) gut? Ist das Finale-Licht dunkel genug, aber lesbar?
 
 ## Stand (0.11.0, 14.10. abends) – Jam-Fassung
 
