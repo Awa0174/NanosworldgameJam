@@ -15,6 +15,7 @@ Package.Require("Highlight.lua")
 Package.Require("Presentation.lua")
 Package.Require("Poses.lua")
 Package.Require("Aim.lua")
+Package.Require("Voice.lua")
 Package.Require("HUD.lua")
 Package.Require("Diag.lua")
 

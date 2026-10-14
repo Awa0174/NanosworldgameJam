@@ -856,6 +856,12 @@ function Jack.Laugh(jack, seconds)
 	Jack.SetFace(jack, "laugh")
 end
 
+-- Jack spricht (Client/Voice.lua): Kiefer folgt der Lautstaerke der Aufnahme. envelope = Text aus Ziffern 0-9,
+-- VOICE_ENV_RATE Werte pro Sekunde (Shared/Voice.lua). Ohne Huellkurve klappert er gleichmaessig.
+function Jack.Talk(jack, seconds, envelope)
+	jack.anims.talk = { t0 = Now(), duration = seconds or 1.5, env = type(envelope) == "string" and envelope or nil }
+end
+
 function Jack.Disappointed(jack)
 	jack.anims.sad = { t0 = Now(), duration = 1.6 }
 	Jack.ApplyFace(jack)
@@ -1184,6 +1190,24 @@ function Jack.Update(jack, dt, time)
 
 	-- Lachen: Kopf in den Nacken, Kiefer klappert (schnappt bei jedem Klack zu), Arme trommeln, Rumpf huepft
 	local flap_l, flap_r = 0, 0
+	if (a.talk) then
+		local t = now - a.talk.t0
+		if (t > a.talk.duration) then
+			a.talk = nil
+		else
+			local level
+			local env = a.talk.env
+			if (env) then
+				local i = math.floor(t * (DeathBox.VOICE_ENV_RATE or 25)) + 1
+				level = (tonumber(string.sub(env, i, i)) or 0) / 9
+			else
+				level = math.abs(math.sin(t * 11))
+			end
+			jaw = math.max(jaw, 3 + 19 * level)
+			head_pitch = head_pitch + 4 * level
+			head_roll = head_roll + math.sin(t * 3.1) * 4
+		end
+	end
 	if (a.laugh) then
 		local t = now - a.laugh.t0
 		local k = math.max(0, 1 - t / a.laugh.duration)

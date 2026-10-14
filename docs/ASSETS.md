@@ -143,7 +143,16 @@ Credit-Zeilen zum Kopieren (Englisch, nur die tatsächlich benutzten; die Klamme
 "Porcelain Polly" by archmage40 - https://sketchfab.com/3d-models/porcelain-polly-9ef34eb03f0a42978b3a9d20f0f8f389 - CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/) - modified (head extracted)
 "Scary Clown" by RedDevon - https://sketchfab.com/3d-models/scary-clown-6331a15229ee458fb45e7cc24a6d2aff - Sketchfab Free Standard license
 Chair and lanterns: Poly Haven (CC0)
+Jack's voice: synthesized with Piper TTS (https://github.com/rhasspy/piper, MIT license), voice model "en-us-libritts-high" trained on LibriTTS by Zen et al. (http://www.openslr.org/60/, CC BY 4.0, https://creativecommons.org/licenses/by/4.0/) - modified (pitch, tempo, effects)
 ```
+
+### Jacks Stimme (v0.13, im Package)
+
+- Erzeugt mit **Piper TTS** (MIT-Lizenz) und dem Stimmmodell `en-us-libritts-high`. Das Modell ist auf dem Datensatz
+  **LibriTTS** trainiert (CC BY 4.0) → **Credit-Zeile oben ist Pflicht** (Jam-Seite und README).
+- Dateien: `Client/sounds/voice/*.ogg` (94 Sätze, ca. 2 MB) und die Liste `Shared/Voice.lua` (erzeugt, nicht von Hand ändern).
+- Andere Modelle derselben Quelle haben strengere Lizenzen (z. B. „ryan“: CC BY-NC-SA, „lessac“: eigene Blizzard-Lizenz).
+  Für den Jam nur LibriTTS verwenden.
 
 ### Schritt 1: Herunterladen
 

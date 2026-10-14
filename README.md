@@ -17,8 +17,15 @@ Regeln, Umfang und Architektur: [`docs/DESIGN.md`](docs/DESIGN.md) · Zeitplan: 
    (Die Welt liegt auf Z = 20000 und schwebt auch über der Testing-Map frei, sie funktioniert also mit beiden Maps.)
 4. Server neu starten. In der Konsole muss stehen:
    ```
-   [DeathBox] Server-Package geladen (Version 0.12.0)
+   [DeathBox] Server-Package geladen (Version 0.13.0)
    ```
+
+## Stand (0.13.0, 15.10.) – Jack spricht
+
+- [x] **Jacks Stimme:** 94 Sätze als Sprachaufnahme (Piper TTS + Clown-Effekte), passend zum Untertitel. Der Untertitel
+      nennt die Namen, die Stimme spricht eine namensfreie Fassung. Jacks Kiefer bewegt sich im Takt der Stimme,
+      sein Lachen tritt zurück, solange er spricht. Konsole: `db_voice <0..2>` (0 = aus).
+- [ ] Im Spiel prüfen: Lautstärke gegenüber Musik und Effekten, Verständlichkeit, passt der Kiefer?
 
 ## Stand (0.12.0, 14.10. abends) – Spannung und Reaktionen
 
@@ -74,3 +81,9 @@ im Chat `/start` startet sofort. Mit `/event <id>` lässt sich das nächste Even
 `revolver`, `knife`, `fire`, `stab`, `angry`, `gallery` (Schießbude; von selbst nur ab 17 Lebenden), `vote`, `pumpkin`, `splitsteal`, `bomb`, `duel`,
 `deal`, `choosecard`. `/card <id>` gibt dir eine Karte (`safety skip ricochet guardian thief`), Taste **C** öffnet die Hand.
 `/status` zeigt Hubs, Warteschlange und Tische. Weitere Befehle stehen in `docs/DESIGN.md`, Abschnitt 8.
+
+## Credits
+
+- Jack's voice: synthesized with Piper TTS (MIT license), voice model "en-us-libritts-high" trained on LibriTTS
+  (http://www.openslr.org/60/, CC BY 4.0) – modified (pitch, tempo, effects). Details: `docs/ASSETS.md`.
+- Fonts: Creepster, Rye, Special Elite (SIL Open Font License / Apache, see `Client/UI/fonts`).

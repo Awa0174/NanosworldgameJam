@@ -13,7 +13,7 @@ Stuhl-Reihenfolge: aufsteigend = im Uhrzeigersinn (Revolver-Weitergabe), ±1 = N
 | `DeathBox:Place` | `kind`, `info_json` | `"hub"` oder `"match"`; info: `{ seat_count, jack_yaw, match }` |
 | `DeathBox:Lobby` | `json` | Hub-Anzeige: `{ online, queued, needed, next_table, humans, seats, bots, tables, max_tables, timer:{total,remaining} }` (`humans` = Menschen am nächsten Tisch, `bots` = Bots, die ihn auf `seats` auffüllen; v0.11). Geht auch an die 3D-Anzeigetafel über dem Zelteingang im Hub (`Hub.SetLobby`) |
 | `DeathBox:State` | `json` | Tischzustand (siehe unten) |
-| `DeathBox:Say` | `text` | Jacks Untertitel |
+| `DeathBox:Say` | `text`, `voice` | Jacks Untertitel; `voice` = Kennung der Aufnahme (`chosen_2` → `Client/sounds/voice/chosen_2.ogg`, Liste `Shared/Voice.lua`) oder `""` |
 | `DeathBox:Fx` | `kind`, `seat` | kleiner Sound/HUD-Effekt: `aim click bang safety qte_ok dodge stab block burn extinguish knife_raise fire chosen death winner` |
 | `DeathBox:Show` | `json` | Regieanweisung `{ action, ... }` (Tabelle unten) |
 | `DeathBox:Choice` | `json` | Abfrage für genau diesen Spieler (unten) |

@@ -627,16 +627,37 @@ DeathBox.Text = {
 
 local function Pick(list)
 	if (type(list) == "table") then
-		return list[math.random(#list)]
+		local index = math.random(#list)
+		return list[index], index
 	end
-	return list
+	return list, 1
 end
+
+-- Sprachausgabe (v0.13): Jede Satzliste in Text.JACK hat eine Kennung ("chosen" fuer JACK.CHOSEN). Gesprochen wird
+-- <kennung>_<nummer> (Client/sounds/voice/chosen_2.ogg, Liste in Shared/Voice.lua). Format merkt sich die zuletzt
+-- gewaehlte Variante; Match:Say fragt sie mit VoiceIdFor(text) ab. Gibt es keine Aufnahme, bleibt es beim Untertitel.
+local VOICE_KEYS = {}
+for key, list in pairs(DeathBox.Text.JACK) do
+	if (type(list) == "table") then VOICE_KEYS[list] = string.lower(key) end
+end
+DeathBox.Text.last_pick = nil
 
 -- Ersetzt {schluessel} im Text durch Werte aus values. Bei Listen wird ein zufaelliger Satz gewaehlt.
 function DeathBox.Text.Format(text_or_list, values)
-	local text = Pick(text_or_list) or ""
-	return (string.gsub(text, "{(%w+)}", function(key)
+	local text, index = Pick(text_or_list)
+	local result = (string.gsub(text or "", "{(%w+)}", function(key)
 		local value = values and values[key]
 		return value ~= nil and tostring(value) or ("{" .. key .. "}")
 	end))
+	local voice_key = VOICE_KEYS[text_or_list]
+	DeathBox.Text.last_pick = voice_key and { id = voice_key .. "_" .. index, text = result } or nil
+	return result
+end
+
+-- Kennung der Aufnahme fuer genau diesen Text (nur wenn er der zuletzt formatierte Jack-Satz ist), sonst nil
+function DeathBox.Text.VoiceIdFor(text)
+	local pick = DeathBox.Text.last_pick
+	DeathBox.Text.last_pick = nil
+	if (pick and pick.text == text) then return pick.id end
+	return nil
 end

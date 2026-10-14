@@ -249,8 +249,9 @@ Events.SubscribeRemote("DeathBox:State", function(json)
 	CallUI("State", json)
 end)
 
-Events.SubscribeRemote("DeathBox:Say", function(text)
+Events.SubscribeRemote("DeathBox:Say", function(text, voice)
 	CallUI("Say", text)
+	if (DeathBox.Voice and type(voice) == "string" and voice ~= "") then DeathBox.Voice.Play(voice) end
 end)
 
 Events.SubscribeRemote("DeathBox:Fx", function(kind, seat)

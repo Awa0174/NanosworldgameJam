@@ -66,8 +66,9 @@ function Net.SendStateTo(player, snapshot)
 	Events.CallRemote("DeathBox:State", player, Reliability.Reliable, JSON.stringify(snapshot))
 end
 
-function Net.Say(dimension, text)
-	Events.BroadcastRemoteDimension("DeathBox:Say", dimension, Reliability.Reliable, text)
+-- voice = Kennung der Aufnahme ("chosen_2") oder "" (nur Untertitel)
+function Net.Say(dimension, text, voice)
+	Events.BroadcastRemoteDimension("DeathBox:Say", dimension, Reliability.Reliable, text, voice or "")
 end
 
 function Net.Fx(dimension, kind, seat)

@@ -30,14 +30,21 @@ Audio.LAYERS = {
 	hub = { name = "hub_calliope_loop", volume = 0.6 },
 }
 
+-- Lacht Jack, waehrend er spricht, tritt das Lachen zurueck (Client/Voice.lua): die Worte gehen vor
+local function Volume(name, volume)
+	volume = volume or 1
+	if (name == "laugh" and DeathBox.Voice and DeathBox.Voice.Speaking()) then return volume * 0.3 end
+	return volume
+end
+
 -- Eigener Sound (2D, ueberall gleich laut)
 function Audio.Play(name, volume, pitch)
-	return Sound(Vector(), DeathBox.SoundFile(name), true, true, SoundType.SFX, volume or 1, pitch or 1)
+	return Sound(Vector(), DeathBox.SoundFile(name), true, true, SoundType.SFX, Volume(name, volume), pitch or 1)
 end
 
 -- Eigener Sound an einem Ort in der Welt
 function Audio.Play3D(name, location, volume, pitch, falloff)
-	return Sound(location, DeathBox.SoundFile(name), false, true, SoundType.SFX, volume or 1, pitch or 1,
+	return Sound(location, DeathBox.SoundFile(name), false, true, SoundType.SFX, Volume(name, volume), pitch or 1,
 		300, falloff or 3600, AttenuationFunction.NaturalSound)
 end
 

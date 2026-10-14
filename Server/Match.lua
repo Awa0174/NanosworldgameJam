@@ -213,8 +213,9 @@ function Match:SetTimer(seconds)
 	self.hud_timer = Net.MakeTimer(seconds)
 end
 
+-- Jack spricht: Untertitel an alle am Tisch, dazu die Kennung der Aufnahme (Client/Voice.lua spielt sie, falls vorhanden)
 function Match:Say(text)
-	Net.Say(self.dimension, text)
+	Net.Say(self.dimension, text, Text.VoiceIdFor(text))
 end
 
 function Match:Fx(kind, seat)
