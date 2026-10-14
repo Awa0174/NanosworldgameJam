@@ -62,6 +62,10 @@ function Hub.BoardText()
 	local seats = tonumber(lobby.seats) or 16
 	local left = Hub.SecondsLeft()
 	if (lobby.timer and left > 0) then
+		local humans = tonumber(lobby.humans)
+		if (humans) then
+			return string.format("NEXT SHOW IN 0:%02d   %d PLAYER%s", math.ceil(left), humans, humans == 1 and "" or "S")
+		end
 		return string.format("NEXT SHOW IN 0:%02d   %d/%d SEATS", math.ceil(left), math.min(tonumber(lobby.next_table) or 0, seats), seats)
 	end
 	if ((tonumber(lobby.tables) or 0) >= (tonumber(lobby.max_tables) or 1) and (tonumber(lobby.queued) or 0) > 0) then
@@ -204,12 +208,20 @@ function Hub.Build()
 		end
 	end
 	-- Lauflicht im Rahmen wie auf dem Rummel; die Schrift setzt alle paar Sekunden kurz aus (Wackelkontakt)
+	-- Nur bei Aenderung setzen (8 Schritte pro Sekunde), nicht in jedem Frame: 42 Birnen x 60 fps waeren sonst
+	-- ueber 2500 Material-Aufrufe pro Sekunde.
+	local last_step, last_glitch = nil, nil
 	Builder.AddTicker(list, function(dt, time)
 		local step = math.floor(time * 8)
 		if (sign:IsValid()) then
 			local glitch = (math.floor(time * 10) % 67) < 2
-			sign:SetColor(glitch and BULB * 0.12 or BULB)
+			if (glitch ~= last_glitch) then
+				last_glitch = glitch
+				sign:SetColor(glitch and BULB * 0.12 or BULB)
+			end
 		end
+		if (step == last_step) then return end
+		last_step = step
 		for _, fb in ipairs(frame_bulbs) do
 			if (fb.mesh:IsValid()) then
 				local on = ((fb.i + step) % 4) ~= 0
@@ -238,7 +250,11 @@ function Hub.Build()
 		end
 		-- im Countdown blinkt die Tafel in den letzten Sekunden
 		local urgent = Hub.lobby and Hub.lobby.timer and Hub.SecondsLeft() <= 5
-		hub.board:SetColor((urgent and math.floor(time * 4) % 2 == 0) and Color(1, 0.25, 0.1) or BULB)
+		local blink = (urgent and math.floor(time * 4) % 2 == 0) and true or false
+		if (blink ~= hub.board_blink) then
+			hub.board_blink = blink
+			hub.board:SetColor(blink and Color(1, 0.25, 0.1) or BULB)
+		end
 	end)
 
 	-- Jack als Statue in der Mitte auf einem Sockel: kompakt (Oberkoerper ragt aus der offenen Kiste, die Haende am Rand,
@@ -253,7 +269,7 @@ function Hub.Build()
 	for _, sy in ipairs({ 1, -1 }) do
 		Builder.Light(list, c + Vector(-300, sy * 170, 110), ORANGE, 2.5, 800, { flicker = 0.3 })
 	end
-	Builder.Spot(list, c + Vector(-200, 0, 1400), Color(0.75, 0.8, 1.0), 22, 2000, 18, { rotation = Rotator(-80, 0, 0) })
+	Builder.Spot(list, c + Vector(-200, 0, 1400), Color(0.75, 0.8, 1.0), 22, 2000, 18, { rotation = Rotator(-80, 0, 0), shadows = false })   -- nur Fuelllicht: ohne Schatten
 
 	-- Jack dreht sich langsam und schaut sich um; ab und zu lacht er
 	hub.next_turn = 0
@@ -290,7 +306,7 @@ function Hub.Build()
 
 	-- Bodennebel
 	for i = 1, 4 do
-		Builder.Particle(list, Builder.OnCircle(c, i * 90 + 45, 900, 20), "smoke", Vector(4, 4, 1))
+		Builder.Particle(list, Builder.OnCircle(c, i * 90 + 45, 900, 20), "smoke", Vector(3, 3, 1))   -- Skalierung 4 kostete viel transparente Ueberzeichnung
 	end
 
 	return hub

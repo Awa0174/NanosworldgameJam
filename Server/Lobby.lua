@@ -1,13 +1,17 @@
 -- Server/Lobby.lua
 -- Verwaltet, wo jeder Spieler gerade ist, und eroeffnet neue Tische.
 --
---   Join ──> Hub (Friedhof, eigene Dimension pro HUB_CAPACITY Spieler)
---        ──> Warteschlange (automatisch, alle im Hub warten)
---        ──> genug Spieler: Countdown ──> neuer Tisch mit bis zu TABLE_SEATS Spielern
+--   Join ──> Hub (Friedhof) ──> Warteschlange
+--        ──> laeuft eine Show mit lebenden Bots?  ──> ins Zelt, zuschauen ("Nachruecker"),
+--                                                     zur naechsten Runde einen Bot-Platz uebernehmen (Match:AdmitJoiners)
+--        ──> sonst: Countdown ──> neuer Tisch (Menschen + Bots bis TABLE_SEATS)
 --        ──> nach der Show zurueck in den Hub und wieder in die Warteschlange
 --
--- Die Warteschlange gilt fuer ALLE Hubs zusammen: Spieler aus verschiedenen Hubs
--- koennen am selben Tisch landen. Es koennen viele Tische gleichzeitig laufen.
+-- Leitlinie (v0.11, Server mit 12 Plaetzen, 2 Tische a 8): Spieler sollen mit SPIELERN spielen. Deshalb wird
+-- immer zuerst der laufende Tisch mit den meisten Menschen aufgefuellt (Bots machen Platz), erst wenn dort kein
+-- Bot mehr uebernommen werden kann, oeffnet ein weiterer Tisch. Ausnahme: Warten genug Spieler fuer einen
+-- KOMPLETTEN neuen Tisch (z. B. alle aus einer gerade beendeten Show), starten sie zusammen neu.
+-- Die Warteschlange gilt fuer ALLE Hubs zusammen.
 
 local Config = DeathBox.Config
 local Text = DeathBox.Text
@@ -21,7 +25,8 @@ DeathBox.Lobby = {
 	queue = {},        -- wartende Spieler in Reihenfolge
 	matches = {},      -- laufende Matches
 	countdown = nil,   -- { timer_id, ends = Net-Timer }
-	bot_count = 0,     -- Debug: Bots fuer den naechsten Tisch
+	bot_count = 0,     -- Debug (/bots): mindestens so viele Bots am naechsten Tisch
+	avoid = {},        -- player -> match: diese Show hat er selbst verlassen (nicht wieder dorthin einteilen)
 }
 
 local Lobby = DeathBox.Lobby
@@ -86,23 +91,85 @@ local function QueueSize()
 	return #Lobby.queue
 end
 
--- Teilnehmer, die ein neuer Tisch haette (echte Spieler + Debug-Bots)
+-- Teilnehmer, die ein neuer Tisch haette: echte Spieler + Bots.
+-- Mit BOT_FILL wird jeder Tisch bis TABLE_SEATS mit Bots aufgefuellt (jede Show sieht voll aus und dauert
+-- gleich lang; spaeter Kommende uebernehmen die Bot-Plaetze). /bots kann zum Testen weniger Plaetze erzwingen nicht,
+-- nur mehr Bots als Menschen (ohne BOT_FILL).
 local function NextTableSize()
 	local real = math.min(QueueSize(), Config.TABLE_SEATS)
-	return math.min(real + Lobby.bot_count, Config.TABLE_SEATS), real
+	local bots = Lobby.bot_count
+	if (Config.BOT_FILL) then bots = math.max(bots, Config.TABLE_SEATS - real) end
+	return math.min(real + bots, Config.TABLE_SEATS), real
+end
+
+-- ===================================================================
+-- Nachruecker: laufende Show mit freien Bot-Plaetzen
+-- ===================================================================
+
+-- Laufende Show, in die ein wartender Spieler nachruecken kann: lebende Bots, die noch kein anderer
+-- Nachruecker "reserviert" hat, und genug Lebende (Config.JOIN_MIN_ALIVE). Bevorzugt die Show mit den
+-- meisten Menschen (erst einen Tisch fuellen), bei Gleichstand die aeltere.
+local function FindJoinableMatch(player)
+	if (not Config.JOIN_RUNNING) then return nil end
+	local best, best_humans
+	for _, match in ipairs(Lobby.matches) do
+		if (Lobby.avoid[player] ~= match and match:OpenBotSeats() > 0) then
+			local humans = match:CountHumans() + #match.joiners
+			if (not best or humans > best_humans or (humans == best_humans and match.id < best.id)) then
+				best, best_humans = match, humans
+			end
+		end
+	end
+	return best
+end
+
+-- Koennte ein Nachruecker von match woanders spielen? (freier Platz fuer einen neuen Tisch oder ein anderer
+-- laufender Tisch mit freien Bot-Plaetzen)
+function Lobby.HasRoomElsewhere(match)
+	if (#Lobby.matches < Config.MAX_MATCHES) then return true end
+	for _, other in ipairs(Lobby.matches) do
+		if (other ~= match and other:OpenBotSeats() > 0) then return true end
+	end
+	return false
+end
+
+-- Verteilt Wartende auf laufende Shows mit freien Bot-Plaetzen. Gibt die Zahl der Verteilten zurueck.
+local function Distribute()
+	local moved = 0
+	local i = 1
+	while (i <= #Lobby.queue) do
+		local player = Lobby.queue[i]
+		local match = player:IsValid() and FindJoinableMatch(player) or nil
+		if (match) then
+			table.remove(Lobby.queue, i)
+			local place = Lobby.where[player]
+			if (place and place.hub) then
+				place.hub.count = place.hub.count - 1
+				place.hub.members[player] = nil
+			end
+			Lobby.where[player] = { match = match }
+			match:AddJoiner(player)
+			moved = moved + 1
+		else
+			i = i + 1
+		end
+	end
+	if (moved > 0) then CleanupHubs() end
+	return moved
 end
 
 function Lobby.BuildLobbyState()
 	local players = 0
 	for _ in pairs(Lobby.where) do players = players + 1 end
-	local total, _ = NextTableSize()
+	local total, real = NextTableSize()
 	return {
 		online = players,
 		queued = QueueSize(),
 		needed = Config.MIN_PLAYERS,
 		next_table = total,
+		humans = real,             -- Menschen am naechsten Tisch (Rest: Bots, die Nachruecker spaeter uebernehmen)
 		seats = Config.TABLE_SEATS,
-		bots = Lobby.bot_count,
+		bots = total - real,
 		tables = #Lobby.matches,
 		max_tables = Config.MAX_MATCHES,
 		timer = Lobby.countdown and Net.TimerSnapshot(Lobby.countdown.ends) or nil,
@@ -137,17 +204,25 @@ local function StartCountdown(seconds)
 	Lobby.countdown = countdown
 end
 
--- Prueft, ob ein neuer Tisch starten kann, und stellt den Countdown passend
+-- Prueft, ob ein neuer Tisch starten kann, und stellt den Countdown passend.
+-- Reihenfolge: (1) genug Wartende fuer einen KOMPLETTEN Tisch und Platz dafuer -> zusammen neu starten (kurzer
+-- Countdown); (2) sonst Wartende auf laufende Shows mit freien Bot-Plaetzen verteilen; (3) Rest: Countdown fuer
+-- einen neuen Tisch, solange einer frei ist.
 function Lobby.CheckQueue()
+	local room = #Lobby.matches < Config.MAX_MATCHES
+	if (not (room and QueueSize() >= Config.TABLE_SEATS)) then
+		Distribute()
+	end
+
 	local total, real = NextTableSize()
-	local can_open = real >= 1 and total >= Config.MIN_PLAYERS and #Lobby.matches < Config.MAX_MATCHES
+	local can_open = real >= 1 and total >= math.max(2, Config.MIN_PLAYERS) and room
 
 	if (not can_open) then
 		CancelCountdown()
 	elseif (not Lobby.countdown) then
-		StartCountdown(total >= Config.TABLE_SEATS and Config.QUEUE_COUNTDOWN_FULL or Config.QUEUE_COUNTDOWN)
-	elseif (total >= Config.TABLE_SEATS) then
-		-- Tisch ist voll: Countdown verkuerzen, falls er noch laenger laeuft
+		StartCountdown(real >= Config.TABLE_SEATS and Config.QUEUE_COUNTDOWN_FULL or Config.QUEUE_COUNTDOWN)
+	elseif (real >= Config.TABLE_SEATS) then
+		-- Genug MENSCHEN fuer einen vollen Tisch: Countdown verkuerzen, falls er noch laenger laeuft
 		local remaining = (Lobby.countdown.ends.ends_at - Net.Now()) / 1000
 		if (remaining > Config.QUEUE_COUNTDOWN_FULL) then
 			StartCountdown(Config.QUEUE_COUNTDOWN_FULL)
@@ -159,8 +234,10 @@ end
 -- Eroeffnet einen Tisch mit den ersten Spielern der Schlange
 function Lobby.OpenTable()
 	CancelCountdown()
+	-- Waehrend des Countdowns kann ein laufender Tisch wieder Platz bekommen haben (Nachruecker ging): erst dorthin
+	if (QueueSize() < Config.TABLE_SEATS) then Distribute() end
 	local total, real = NextTableSize()
-	if (real < 1 or total < Config.MIN_PLAYERS or #Lobby.matches >= Config.MAX_MATCHES) then
+	if (real < 1 or total < math.max(2, Config.MIN_PLAYERS) or #Lobby.matches >= Config.MAX_MATCHES) then
 		Lobby.CheckQueue()
 		return
 	end
@@ -187,7 +264,6 @@ function Lobby.OpenTable()
 	Lobby.bot_count = 0
 
 	-- Warten noch genug fuer weitere VOLLE Tische, starten die sofort mit
-	-- (z. B. wenn 300 Spieler gleichzeitig joinen)
 	while (QueueSize() >= Config.TABLE_SEATS and #Lobby.matches < Config.MAX_MATCHES) do
 		Open(Config.TABLE_SEATS, 0)
 	end
@@ -215,17 +291,23 @@ function Lobby.SendToHub(player)
 
 	RemoveFromQueue(player)
 	table.insert(Lobby.queue, player)
-	Lobby.CheckQueue()
+	if (not Lobby.batching) then Lobby.CheckQueue() end
 end
 
 function Lobby.OnPlayerJoin(player)
-	Chat.SendMessage(player, Text.Format(Text.HUB_JOIN, { name = player:GetName() }))
 	Lobby.SendToHub(player)
+end
+
+-- Begruessung erst, wenn der Client fertig geladen hat (beim Spawn kaeme die Chat-Zeile evtl. nicht an)
+function Lobby.OnPlayerReady(player)
+	if (not player or not player:IsValid()) then return end
+	Chat.SendMessage(player, Text.Format(Text.HUB_JOIN, { name = player:GetName() }))
 end
 
 function Lobby.OnPlayerLeave(player)
 	local place = Lobby.where[player]
 	Lobby.where[player] = nil
+	Lobby.avoid[player] = nil
 	RemoveFromQueue(player)
 
 	if (place and place.hub) then
@@ -238,7 +320,8 @@ function Lobby.OnPlayerLeave(player)
 	Lobby.CheckQueue()
 end
 
--- Ausgeschiedener Spieler will nicht mehr zuschauen (/leave)
+-- Ausgeschiedener Spieler (oder Nachruecker) will nicht mehr zuschauen: /leave bzw. Knopf "Next show" im HUD.
+-- Er kommt nicht wieder an DIESEN Tisch (Lobby.avoid), sondern an einen anderen oder in die naechste Show.
 function Lobby.LeaveMatch(player)
 	local place = Lobby.where[player]
 	if (not place or not place.match) then return false end
@@ -247,6 +330,7 @@ function Lobby.LeaveMatch(player)
 	if (seat and seat.alive and match.state ~= DeathBox.Match.STATE.ENDED) then
 		return false   -- wer noch lebt, kann nicht einfach gehen
 	end
+	Lobby.avoid[player] = match
 	match:OnPlayerLeave(player)
 	if (Lobby.where[player] and Lobby.where[player].match == match) then
 		Lobby.SendToHub(player)
@@ -262,12 +346,21 @@ function Lobby.OnMatchDisposed(match, players)
 			break
 		end
 	end
+	for player, avoided in pairs(Lobby.avoid) do
+		if (avoided == match) then Lobby.avoid[player] = nil end
+	end
+	-- Alle zuerst in den Hub, DANN einmal verteilen: so bleibt eine Gruppe, die zusammen gespielt hat, zusammen
+	-- (ein ganzer Tisch startet gemeinsam neu, statt einzeln auf freie Bot-Plaetze verteilt zu werden).
+	-- Jeder einzeln geschuetzt: ein Fehler bei einem Spieler darf die anderen nicht im aufgeloesten Tisch zuruecklassen.
+	Lobby.batching = true
 	for _, player in ipairs(players) do
 		local place = Lobby.where[player]
 		if (place and place.match == match) then
-			Lobby.SendToHub(player)
+			local ok, err = pcall(Lobby.SendToHub, player)
+			if (not ok) then Console.Error("[DeathBox] Rueckkehr in den Hub fehlgeschlagen: %s", tostring(err)) end
 		end
 	end
+	Lobby.batching = false
 	Lobby.CheckQueue()
 end
 
@@ -298,11 +391,12 @@ function Lobby.Chat(player, message)
 		for member in pairs(place.hub.members) do table.insert(recipients, member) end
 	else
 		local seat = place.match:FindSeatByPlayer(player)
-		local style = (seat and seat.alive) and "bold" or "grey"   -- Zuschauer grau
+		local style = (seat and seat.alive) and "bold" or "grey"   -- Zuschauer und Nachruecker grau
 		line = "<" .. style .. ">" .. name .. "</>: " .. Plain(message, Config.CHAT_MAX_LENGTH)
 		for _, other in ipairs(place.match.seats) do
 			if (other.player) then table.insert(recipients, other.player) end
 		end
+		for _, joiner in ipairs(place.match.joiners) do table.insert(recipients, joiner) end
 	end
 	for _, recipient in ipairs(recipients) do
 		if (recipient:IsValid()) then Chat.SendMessage(recipient, line) end

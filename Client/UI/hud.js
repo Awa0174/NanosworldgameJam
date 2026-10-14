@@ -60,9 +60,20 @@
 		WAITING: "Waiting for more victims",
 		COUNTDOWN: "The next show starts in",
 		QUEUE_INFO: (n, seats) => `${n} / ${seats} seats taken`,
+		QUEUE_FILL: (humans, bots) => humans > 0 && bots > 0
+			? `${humans} player${humans === 1 ? "" : "s"} + ${bots} puppet${bots === 1 ? "" : "s"} · late arrivals take a puppet's seat`
+			: `${humans} player${humans === 1 ? "" : "s"}`,
 		TABLES_FULL: "All tents are full. Please wait…",
 		NEXT_IN: "Back to the graveyard in",
-		SPECTATING: "Had enough? Type /leave to go back to the graveyard",
+		SPECTATING: "Had enough? Press N for the next show",
+		JOINING_TITLE: "You're next!",
+		JOINING_SUB: "You take over a puppet's seat when this round ends",
+		YOU_JOINING: "You're next – watch, your seat is coming",
+		JOINED_WORD: "YOU'RE IN!",
+		JOINED_TOOK: "You took",
+		JOINED_SEAT: "'s seat",
+		JOINED_CARDS: (n) => n > 0 ? ` · ${n} card${n === 1 ? "" : "s"}, press C` : "",
+		TAKES_SEAT: " takes the seat of ",
 		YOU: "YOU",
 		DEAD: "DEAD",
 		POP_SMALL: "Jack picks",
@@ -89,7 +100,7 @@
 		ST_HOLD: "Jack has chosen…",
 		ST_PICKED: (name) => `Jack picked ${name}`,
 		ST_PICKED_YOU: "Jack picked YOU!",
-		ST_SKIP: (a, b) => `Skip! ${a} slips away – Jack spins on to ${b}`,
+		ST_SKIP: (a, b) => `Body double! ${a} slips away – Jack spins on to ${b}`,
 		ST_CARD: (name, who) => (who ? `${name} – ${who}` : name),
 		ST_AIMING: (shooter, target, meShooter) => (meShooter ? `You are aiming at ${target}…` : `${shooter} is aiming at ${target}…`),
 		ST_AIMING_YOU: (shooter) => `${shooter} is aiming at YOU…`,
@@ -115,7 +126,7 @@
 		YOU_PULLED: (name) => `You pulled the trigger – if it clicks, ${name} shoots next`,
 		YOU_SURVIVED: "You survived!",
 		YOU_EVENT_OVER: "It's over – see who made it",
-		YOU_JACK_AIMS: "Jack aims at YOU – only a Safety or Ricochet can help",
+		YOU_JACK_AIMS: "Jack aims at YOU – only a Lucky Charm or a Funhouse Mirror can help",
 		YOU_LINE: "You are in the line of fire – only a card can help",
 		YOU_FATE: "You can't vote – your fate is in their hands",
 		YOU_READY: "Get ready – you are up next",
@@ -167,16 +178,16 @@
 		REV_RELOAD: (odds) => `Jack loads another bullet: ${odds.n} in ${odds.of}`,
 		JACK_AIMS: (name) => `Jack aims at ${name}`,
 		ANGRY_KICKER: "Jack has run out of patience",
-		ONLY_CARDS: "Only a Safety or a Ricochet can help",
+		ONLY_CARDS: "Only a Lucky Charm or a Funhouse Mirror can help",
 		GALLERY_KICKER: (k, n) => `Shooting gallery · duck ${k} of ${n}`,
 
 		// Karten-Cues
-		SKIP_WORD: "SKIP!",
-		SKIP_KICKER: "Skip card",
+		SKIP_WORD: "BODY DOUBLE!",
+		SKIP_KICKER: "Body Double card",
 		SKIP_MAIN: (name) => `${name} slips away`,
 		SKIP_TO: (name) => `…Jack spins on to ${name}`,
 		RICOCHET_WORD: "RICOCHET!",
-		RICOCHET_KICKER: "Ricochet card",
+		RICOCHET_KICKER: "Funhouse Mirror card",
 		RICOCHET_MAIN: (name) => `The bullet bounces off ${name}`,
 		RICOCHET_TO: (name) => `…straight toward ${name}!`,
 
@@ -206,7 +217,7 @@
 		BOOM: "BOOM!",
 
 		// Split or Steal
-		SPLIT_KICKER: "Split or steal",
+		SPLIT_KICKER: "Share or snatch",
 		SPLIT_SUB: "One deal. Two secrets.",
 		SPLIT_HANDS: (name, theirs, mine) => `${name} holds ${theirs} card${theirs === 1 ? "" : "s"} · you hold ${mine}`,
 		SPLIT_WAIT: (name) => `${name} is still deciding…`,
@@ -223,7 +234,7 @@
 
 		// Bombe
 		BOMB_KICKER: "Jack built it himself",
-		BOMB_MAIN: "Defuse or die",
+		BOMB_MAIN: "Snip the wire",
 		BOMB_YOU: (s) => `You have ${s} seconds · read the manual!`,
 		BOMB_OTHER: (name, s) => `${name} has ${s} seconds`,
 		DEFUSED: "DEFUSED!",
@@ -264,7 +275,7 @@
 		HAND_TITLE: (n, max) => `${n} of ${max} cards`,
 		HAND_EMPTY: "Your hands are empty",
 		PICK_HAND: (names) => `In your hand: ${names}`,
-		HAND_EMPTY_NOTE: "Win cards in Card Deal, Split or Steal and Choose a Card.",
+		HAND_EMPTY_NOTE: "Jack hands out new cards in Party Favors.",
 		HAND_DEAD: "The dead hold no cards",
 		HAND_NOTE: "Click a playable card to use it · automatic cards work by themselves",
 		HAND_NOTE_AUTO: "Automatic cards work by themselves when their moment comes",
@@ -279,7 +290,7 @@
 		PLAY_COOLDOWN: "Wait a moment…",
 		NO_THIEF_TARGETS: "Nobody has a card to steal",
 		NO_TARGETS: "No valid target right now",
-		TARGET_TITLE: { guardian: "Who gets the Safety?", thief: "Steal from whom?" },
+		TARGET_TITLE: { guardian: "Who gets the Lucky Charm?", thief: "Steal from whom?" },
 		TARGET_SUB: { guardian: "Any living player · you too", thief: "Players with cards" },
 		TARGET_ANY: "Choose a target",
 		CARDS_SHORT: (n) => `${n} card${n === 1 ? "" : "s"}`,
@@ -328,7 +339,7 @@
 	const SVG_NS = "http://www.w3.org/2000/svg";
 	// Cues, die ein laufendes Gluecksrad NICHT beenden (koennen jederzeit kommen, z. B. Karte waehrend des Drehens;
 	// death waehrend des Drehens = jemand hat die Show verlassen, left = true)
-	const KEEP_SPIN = new Set(["card_play", "card_gain", "card_trigger", "point", "death"]);
+	const KEEP_SPIN = new Set(["card_play", "card_gain", "card_trigger", "point", "death", "seat_taken", "you_joined"]);
 	// nur 3D/Ton (Client/Presentation.lua), das HUD zeigt dazu nichts Eigenes
 	const SILENT_CUES = new Set(["point", "knife_raise", "knife_throw", "fire_breath", "fire_off", "stab_raise", "stab_strike"]);
 
@@ -497,6 +508,11 @@
 	function mySeat() {
 		if (!state || !(localId >= 0)) return null;
 		return asArray(state.seats).find((s) => s.id === localId) || null;
+	}
+
+	// Bin ich Nachruecker an diesem Tisch (schaue zu, bekomme zur naechsten Runde einen Bot-Platz)?
+	function amJoining() {
+		return !!(state && localId >= 0 && asArray(state.joining).some((id) => Number(id) === localId));
 	}
 
 	function seatByIndex(index) {
@@ -681,7 +697,9 @@
 		sub.classList.toggle("big", counting);
 		if (counting) {
 			text.textContent = TEXT.COUNTDOWN;
-			note.textContent = TEXT.QUEUE_INFO(lobby.next_table || 0, lobby.seats || 16);
+			note.textContent = (typeof lobby.humans === "number")
+				? TEXT.QUEUE_FILL(lobby.humans, Math.max(0, (lobby.next_table || 0) - lobby.humans))
+				: TEXT.QUEUE_INFO(lobby.next_table || 0, lobby.seats || 8);
 			startCountdown(left, sub);
 			return;
 		}
@@ -875,7 +893,7 @@
 			const seat = winner.on ? winner.seat : Number(state.winner) || 0;
 			return seat > 0 && isMe(seat) ? { mode: "win", text: TEXT.YOU_WON } : { mode: "watch", text: TEXT.YOU_OVER };
 		}
-		if (!me) return { mode: "watch", text: localId >= 0 ? TEXT.YOU_WATCH : "" };
+		if (!me) return { mode: "watch", text: localId >= 0 ? (amJoining() ? TEXT.YOU_JOINING : TEXT.YOU_WATCH) : "" };
 		if (!me.alive) {
 			const r = act.result;
 			if (stage === "result" && r && r.out.includes(me.seat)) return { mode: "out", text: TEXT.YOU_OUT_NOW };
@@ -1456,6 +1474,11 @@
 			show("lobby", true);
 			text.textContent = TEXT.NEXT_IN;
 			startCountdown(left, sub);
+		} else if (state.phase !== "ENDED" && !me && amJoining()) {
+			// Nachruecker: schaut zu, bis er zu Beginn der naechsten Runde einen Bot-Platz uebernimmt
+			show("lobby", true);
+			text.textContent = TEXT.JOINING_TITLE;
+			sub.textContent = TEXT.JOINING_SUB;
 		} else if (state.phase !== "ENDED" && localId >= 0 && (!me || !me.alive)) {   // vor Init: noch unbekannt, wer du bist
 			// Zuschauer; waehrend der eigenen Abstimmung (auch Tote stimmen ab) stoert der Satz nur
 			show("lobby", !(choice && choice.kind === "vote"));
@@ -1580,7 +1603,7 @@
 				break;
 			case "safety":
 				flash("safety");
-				word("SAFETY", "safety");
+				word("LUCKY!", "safety");
 				break;
 			case "dodge":
 				word("DODGED", "dodge");
@@ -1809,6 +1832,8 @@
 			case "card_gain": cueCardGain(data); break;
 			case "card_play": cueCardPlay(data); break;
 			case "card_trigger": cueCardTrigger(data); break;
+			case "seat_taken": cueSeatTaken(data); break;
+			case "you_joined": cueYouJoined(data); break;
 			default: console.warn("[DeathBox] Unknown show cue", action);
 		}
 	}
@@ -2458,6 +2483,21 @@
 			ms: 3000,
 		});
 		seats.forEach((seat, i) => after("deal", 140 * i, () => flashRow(seat, "dealt")));
+	}
+
+	// Nachruecker uebernimmt einen Bot-Platz (alle am Tisch)
+	function cueSeatTaken(data) {
+		const seat = Number(data.seat);
+		if (isMe(seat)) return;   // der Nachruecker selbst bekommt "you_joined"
+		toast({ tone: "gold", parts: [[String(data.name || "?"), "who"], [TEXT.TAKES_SEAT, ""], [String(data.old || "?"), "em"]] });
+		flashRow(seat, "dealt");
+	}
+
+	// Nur an den Nachruecker: du sitzt jetzt am Tisch
+	function cueYouJoined(data) {
+		const cards = Math.max(0, Number(data.cards) || 0);
+		word(TEXT.JOINED_WORD, "skip", 2);
+		toast({ tone: "gold", parts: [[TEXT.JOINED_TOOK + " ", ""], [String(data.old || "?"), "who"], [TEXT.JOINED_SEAT + TEXT.JOINED_CARDS(cards), ""]] });
 	}
 
 	function cueCardGain(data) {

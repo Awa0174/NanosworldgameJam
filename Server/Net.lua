@@ -19,6 +19,7 @@
 --   "DeathBox:Aim"           (ask_id, seat) – Revolver-Zielmodus: Zwischenstand der Zielwahl (0 = niemand), gedrosselt
 --   "DeathBox:RequestState"  HUD ist bereit und moechte den aktuellen Zustand (gedrosselt)
 --   "DeathBox:PlayCard"      (uid, target_seat) – Hand.Play (Server/Cards.lua)
+--   "DeathBox:Leave"         Knopf "Next show": Ausgeschiedener/Nachruecker geht in die naechste Show (Lobby.LeaveMatch)
 --
 -- Warum JSON? Ein einziges, klar definiertes Format fuer Lua und JavaScript.
 
@@ -107,10 +108,37 @@ local function IsInteger(value)
 	return type(value) == "number" and value == math.floor(value) and value >= 0 and value < 2 ^ 31
 end
 
+-- Flutschutz pro Spieler und Nachricht (Token-Eimer): hoechstens rate Nachrichten pro Sekunde, kurze Spitzen
+-- bis rate erlaubt. Gibt false zurueck, wenn die Nachricht verworfen werden soll.
+local budgets = {}   -- kind -> player_id -> { tokens, at }
+local function Allow(kind, player, rate)
+	local list = budgets[kind]
+	if (not list) then
+		list = {}
+		budgets[kind] = list
+	end
+	local now, id = Net.Now(), player:GetID()
+	local budget = list[id]
+	if (not budget) then
+		budget = { tokens = rate, at = now }
+		list[id] = budget
+	end
+	budget.tokens = math.min(rate, budget.tokens + (now - budget.at) / 1000 * rate)
+	budget.at = now
+	if (budget.tokens < 1) then return false end
+	budget.tokens = budget.tokens - 1
+	return true
+end
+
+local INPUT_RATE = 12      -- DeathBox:Input pro Sekunde (Feuer-Klicks sind die schnellsten echten Eingaben)
+local CARD_RATE = 3        -- DeathBox:PlayCard pro Sekunde
+local LEAVE_RATE = 1       -- DeathBox:Leave pro Sekunde
+
 -- Eingaben vom Client. Hier wird nur der Typ grob geprueft, die eigentliche
 -- Pruefung (ist der Spieler gefragt? gueltige Wahl? richtige Abfrage?) macht Match.HandleInput.
 Events.SubscribeRemote("DeathBox:Input", function(player, ask_id, choice)
 	if (type(ask_id) ~= "number") then return end
+	if (not Allow("input", player, INPUT_RATE)) then return end
 	if (type(choice) == "string") then
 		if (#choice > 32) then return end
 	elseif (type(choice) ~= "number") then
@@ -125,20 +153,9 @@ end)
 -- Revolver-Zielmodus: Zwischenstand der Zielwahl (ask_id, Platz oder 0). Pro Spieler hoechstens
 -- Config.REVOLVER.AIM_RATE Nachrichten pro Sekunde (Token-Eimer, der Rest wird verworfen). Ob der Absender wirklich
 -- der Halter in der Wahl-Phase ist und der Platz erlaubt, prueft Match:HandleAim / Context:HandleAim.
-local aim_budget = {}   -- player_id -> { tokens, at }
 Events.SubscribeRemote("DeathBox:Aim", function(player, ask_id, seat)
 	if (not IsInteger(ask_id) or not IsInteger(seat)) then return end
-	local rate = DeathBox.Config.REVOLVER.AIM_RATE
-	local now, id = Net.Now(), player:GetID()
-	local budget = aim_budget[id]
-	if (not budget) then
-		budget = { tokens = rate, at = now }
-		aim_budget[id] = budget
-	end
-	budget.tokens = math.min(rate, budget.tokens + (now - budget.at) / 1000 * rate)
-	budget.at = now
-	if (budget.tokens < 1) then return end
-	budget.tokens = budget.tokens - 1
+	if (not Allow("aim", player, DeathBox.Config.REVOLVER.AIM_RATE)) then return end
 	local match = DeathBox.Lobby.GetMatchOf(player)
 	if (match) then
 		match:HandleAim(player, ask_id, seat)
@@ -148,6 +165,7 @@ end)
 -- Karte ausspielen: uid der Karte, Ziel-Platz (0 = keins). Pruefung in Hand.Play.
 Events.SubscribeRemote("DeathBox:PlayCard", function(player, uid, target_seat)
 	if (not IsInteger(uid) or not IsInteger(target_seat)) then return end
+	if (not Allow("card", player, CARD_RATE)) then return end
 	if (not DeathBox.Hand.Play(player, uid, target_seat) and DeathBox.Config.DEBUG_COMMANDS) then
 		Console.Warn("[DeathBox] Karte abgelehnt von %s: uid %d, Ziel %d", player:GetName(), uid, target_seat)
 	end
@@ -163,7 +181,14 @@ Events.SubscribeRemote("DeathBox:RequestState", function(player)
 	DeathBox.Lobby.SendCurrentStateTo(player)
 end)
 
+-- Knopf "Next show" im HUD (Ausgeschiedene und Nachruecker): wie /leave
+Events.SubscribeRemote("DeathBox:Leave", function(player)
+	if (not Allow("leave", player, LEAVE_RATE)) then return end
+	DeathBox.Lobby.LeaveMatch(player)
+end)
+
 Player.Subscribe("Destroy", function(player)
-	last_request[player:GetID()] = nil
-	aim_budget[player:GetID()] = nil
+	local id = player:GetID()
+	last_request[id] = nil
+	for _, list in pairs(budgets) do list[id] = nil end
 end)

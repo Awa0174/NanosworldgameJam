@@ -1,6 +1,6 @@
 -- Server/Diag.lua
 -- Nimmt die Selbstdiagnose der Clients an (Client/Diag.lua) und haengt sie an "deathbox_diag.txt" im Server-Ordner.
--- Nur mit DEBUG_COMMANDS; pro Spieler hoechstens 80 Teile pro Verbindung, Text wird gekuerzt.
+-- Nur von Admins (Server/Commands.lua); pro Spieler hoechstens 80 Teile pro Verbindung, Text wird gekuerzt.
 
 local Config = DeathBox.Config
 
@@ -20,7 +20,7 @@ local function Append(text)
 end
 
 Events.SubscribeRemote("DeathBox:Diag", function(player, index, total, text)
-	if (not Config.DEBUG_COMMANDS) then return end
+	if (not DeathBox.Commands.IsAdmin(player)) then return end
 	if (type(index) ~= "number" or type(total) ~= "number" or type(text) ~= "string") then return end
 	local id = player:GetID()
 	received[id] = (received[id] or 0) + 1

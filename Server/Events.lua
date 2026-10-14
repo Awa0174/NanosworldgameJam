@@ -277,7 +277,7 @@ function Context:After(seconds, callback)
 	local id
 	id = Timer.SetTimeout(function()
 		self.timers[id] = nil
-		if (not self.finished) then callback() end
+		if (not self.finished) then self.match:Guard("Event " .. self.id, callback) end
 	end, math.max(0, math.floor(seconds * 1000 + 0.5)))
 	self.timers[id] = true
 	return id

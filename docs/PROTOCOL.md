@@ -11,13 +11,14 @@ Stuhl-Reihenfolge: aufsteigend = im Uhrzeigersinn (Revolver-Weitergabe), ±1 = N
 | Event | Argumente | Bedeutung |
 |---|---|---|
 | `DeathBox:Place` | `kind`, `info_json` | `"hub"` oder `"match"`; info: `{ seat_count, jack_yaw, match }` |
-| `DeathBox:Lobby` | `json` | Hub-Anzeige: `{ online, queued, needed, next_table, seats, bots, tables, max_tables, timer:{total,remaining} }`. Geht auch an die 3D-Anzeigetafel über dem Zelteingang im Hub (`Hub.SetLobby`) |
+| `DeathBox:Lobby` | `json` | Hub-Anzeige: `{ online, queued, needed, next_table, humans, seats, bots, tables, max_tables, timer:{total,remaining} }` (`humans` = Menschen am nächsten Tisch, `bots` = Bots, die ihn auf `seats` auffüllen; v0.11). Geht auch an die 3D-Anzeigetafel über dem Zelteingang im Hub (`Hub.SetLobby`) |
 | `DeathBox:State` | `json` | Tischzustand (siehe unten) |
 | `DeathBox:Say` | `text` | Jacks Untertitel |
 | `DeathBox:Fx` | `kind`, `seat` | kleiner Sound/HUD-Effekt: `aim click bang safety qte_ok dodge stab block burn extinguish knife_raise fire chosen death winner` |
 | `DeathBox:Show` | `json` | Regieanweisung `{ action, ... }` (Tabelle unten) |
 | `DeathBox:Choice` | `json` | Abfrage für genau diesen Spieler (unten) |
 | `DeathBox:ChoiceEnd` | `ask_id` | Abfrage schließen (0 = alle) |
+| `DeathBox:Admin` | `enabled` | nur an diesen Spieler: Admin-Befehle per `db_admin` (Server-Konsole) an/aus. Der Client belegt dann Taste B (Noclip) |
 | `DeathBox:Hand` | `json` | **privat**: eigene Kartenhand `{ cards: [ { uid, id, rounds_left? } ] }`. Kommt nach **jeder** Änderung, bei `RequestState` und leer beim Wechsel in den Hub (Ausgeschiedene haben keine Karten). `rounds_left` (nur Safety aus Guardian) zählt bei jeder neuen Runde herunter, bei 0 verschwindet die Karte. |
 
 ### State
@@ -26,6 +27,7 @@ Stuhl-Reihenfolge: aufsteigend = im Uhrzeigersinn (Revolver-Weitergabe), ±1 = N
   round, stage: "intro"|"spin"|"skip"|"pop"|"card"|"event"|"result"|"ended",
   timer: {total, remaining}?,
   seats: [ { seat, chair, angle, name, id (Player-ID oder -1), bot, alive, cards (Anzahl) } ],
+  joining: [Player-ID],   -- Nachrücker: schauen im Zelt zu, übernehmen zu Beginn der nächsten Runde einen Bot-Platz (v0.11)
   event: { id, name, actors:[seat], awaiting:[seat], involved:[seat], focus, instruction_actor, instruction_others, final?,
            endangered?:[seat], data:{...} }? }
 ```
@@ -68,7 +70,11 @@ Stuhl-Reihenfolge: aufsteigend = im Uhrzeigersinn (Revolver-Weitergabe), ±1 = N
 | `DeathBox:Aim` | `ask_id`, `seat` (0 = zielt auf niemanden) | Revolver-Zielmodus. Nur ganze Zahlen; höchstens 6 pro Sekunde je Spieler (der Rest wird verworfen). Abfrage `ask_id` ist offen für den Platz des Absenders und hat `aim = true` (= Halter in der Wahl-Phase); `seat` = 0 oder ein lebender Platz aus den `options` dieser Abfrage. Gültig → Show `revolver_aiming` an den Tisch (höchstens 5 pro Sekunde, die neueste Wahl gewinnt) und die sitzende Figur des Halters dreht sich zum Ziel. Geschossen wird wie immer mit `DeathBox:Input` (gleiche `ask_id`, Platznummer) |
 | `DeathBox:RequestState` | – | gedrosselt (1/s) |
 | `DeathBox:PlayCard` | `uid`, `target_seat` (0 = keins) | nur in `PLAYING`, Spieler sitzt und lebt, besitzt die Karte (uid), Karte ist ausspielbar, Ziel gültig (guardian: lebender Platz, auch man selbst, mit Platz auf der Hand; thief: anderer Lebender mit ≥ 1 Karte), max. 1 erfolgreich gespielte Karte pro 2 s. Abgelehnt = nichts passiert, die Karte bleibt. Erfolg = Show `card_play` + neue Hand |
-| `DeathBox:ToggleNoClip` | – | nur mit DEBUG |
+| `DeathBox:Leave` | – | Taste N „Next show“: nur Ausgeschiedene und Nachrücker (wie `/leave`), höchstens 1/s. Danach nicht wieder an denselben Tisch |
+| `DeathBox:Diag` | `index`, `total`, `text` | Selbstdiagnose, nur von Admins |
+| `DeathBox:ToggleNoClip` | – | nur Admins (DEBUG oder `db_admin`) |
+
+Flutschutz (Token-Eimer pro Spieler, `Server/Net.lua`): `Input` 12/s, `PlayCard` 3/s, `Aim` 6/s, `Leave` 1/s; der Rest wird verworfen.
 
 ## Lua <-> WebUI (Client/HUD.lua <-> Client/UI/hud.js)
 
@@ -132,11 +138,11 @@ Plätze, die nicht mehr leben, werden abgelehnt.
 
 | action | Felder | 3D/Ton (Client/Presentation.lua) | HUD |
 |---|---|---|---|
-| `intro` | `duration, pop_at, music` (`duration` = `INTRO_TIME` 12 s, `pop_at` = Sekunde des POP = `INTRO_POP_AT`, `music` = `INTRO_MUSIC`) | Jack in der Kiste, Spieluhr, POP heraus | Titel-Intro + „How to play“ |
-| `spin` | `seat, start_yaw, target_yaw, turns, duration, hold, music, actors` — `actors` = alle Gewählten (Duell, Split or Steal: zwei; `[1]` = `seat`), `turns` = 1 (Weg = `turns`·360° + Rest bis `target_yaw`, also 1–2 Umdrehungen), `duration` = `SPIN_TIME` (10 s), `hold` = `HOLD_TIME` (2 s), `music` = zufällig aus `Config.SPIN_TUNES`, nie zweimal hintereinander dieselbe (jede genau `SPIN_TIME` lang, Ritardando, endet auf dem Stopp). Kein schneller Spin mehr | Jack lugt aus der offenen Kiste und dreht sich langsam mit, roter Suchscheinwerfer streift die Stühle (Flackern + Tick), Kriechen am Ende, Stopp; Stille + Herzschlag (`hold`): Jack starrt das Opfer an (Kopf kippt, Strahl heller, Opfer ROT markiert) | „JACK IS CHOOSING…“, Sitzliste aus (Client ergänzt `ticks:[{t,seat}]`) |
+| `intro` | `duration, pop_at, music` (`duration` = `INTRO_TIME` 10 s, `pop_at` = Sekunde des POP = `INTRO_POP_AT`, `music` = `INTRO_MUSIC`) | Jack in der Kiste, Spieluhr, POP heraus | Titel-Intro + „How to play“ |
+| `spin` | `seat, start_yaw, target_yaw, turns, duration, hold, music, actors` — `actors` = alle Gewählten (Duell, Split or Steal: zwei; `[1]` = `seat`), `turns` = 1 (Weg = `turns`·360° + Rest bis `target_yaw`, also 1–2 Umdrehungen), `duration` = `SPIN_TIME` (8 s), `hold` = `HOLD_TIME` (1,5 s), `music` = zufällig aus `Config.SPIN_TUNES`, nie zweimal hintereinander dieselbe (jede genau `SPIN_TIME` lang, Ritardando, endet auf dem Stopp). Kein schneller Spin mehr | Jack lugt aus der offenen Kiste und dreht sich langsam mit, roter Suchscheinwerfer streift die Stühle (Flackern + Tick), Kriechen am Ende, Stopp; Stille + Herzschlag (`hold`): Jack starrt das Opfer an (Kopf kippt, Strahl heller, Opfer ROT markiert) | „JACK IS CHOOSING…“, Sitzliste aus (Client ergänzt `ticks:[{t,seat}]`) |
 | `pop` | `seat, name, actors` (`actors` = alle Gewählten, `[1]` = `seat`; nach einem Skip schon mit dem Ersatz) | Jack schießt aus der offenen Kiste heraus und beugt sich übers Opfer: Stoß bis ca. 50 cm vor sein Gesicht, dann schwebt Jacks Gesicht ca. 1 m davor und lacht; alle Gewählten GOLD markiert (bleibt bis `round_end`, ROT gewinnt, sobald es in Gefahr ist) | großer Name (zwei Gewählte: „MUMBLES & YOU“); Stage-Zeile „JACK PICKED MUMBLES & YOU“, der zweite Gewählte liest „It's YOU too“ (schon beim Starren im `spin`), nie „Not you“ |
 | `skip` | `seat, new_seat, name, new_name, target_yaw` | Karte zerbricht, Jacks Blick (Suchstrahl) reißt zum neuen Opfer herum, kurzes Starren (neues Opfer ROT) | „SKIP!“ — kommt statt des `pop`; `SKIP_TIME` (3 s) später folgt `pop` auf `new_seat`. Höchstens einmal pro Runde |
-| `card` | `event, name, tagline, rules, duration, seat, seat2?, actors, who, how, you_actor, you_others, first, round` — `actors` = Gewählte (Liste), `who` = wer mit Namen („Nibbles gets the revolver“, „Nibbles vs Bonzo“), `how` = 2–3 Stichpunkte, `you_actor` (für Plätze in `actors`) / `you_others` (alle anderen) = fertige Zeile mit „YOU: …“, `first` = erstes Mal in dieser Show (`duration` dann `CARD_TIME` 5 s, sonst `CARD_TIME_REPEAT` 3,5 s) | Trommelwirbel; bei `event = "choosecard"` fächert Jack drei leuchtende Karten vor dem Gewählten auf | Event-Karte |
+| `card` | `event, name, tagline, rules, duration, seat, seat2?, actors, who, how, you_actor, you_others, first, round` — `actors` = Gewählte (Liste), `who` = wer mit Namen („Nibbles gets the revolver“, „Nibbles vs Bonzo“), `how` = 2–3 Stichpunkte, `you_actor` (für Plätze in `actors`) / `you_others` (alle anderen) = fertige Zeile mit „YOU: …“, `first` = erstes Mal in dieser Show (`duration` dann `CARD_TIME` 4,5 s, sonst `CARD_TIME_REPEAT` 2 s) | Trommelwirbel; bei `event = "choosecard"` fächert Jack drei leuchtende Karten vor dem Gewählten auf | Event-Karte |
 | `point` | `seat` | Jack dreht sich kurz hin | – |
 | `revolver_give` | `seat` | 3D-Revolver (eigenes Modell, `Client/World/Revolver.lua`) fliegt aus Jacks Hand in die rechte Hand des Halters (Knochen `hand_r`), Trommel wirbelt. Die Zielabfrage (`aim = true`) folgt `REVOLVER.GIVE_TIME` (2,5 s) später | – |
 | `revolver_aiming` | `shooter, seat` (`seat` = 0: zielt auf niemanden) | Nur in der Wahl-Phase. Die sitzende Figur des Halters dreht sich (Server) zum Ziel, der Revolver in seiner Hand zeigt hin. Menschen: per `DeathBox:Aim`; Bots schwenken 2–3-mal, bevor sie wählen | Highlight Halter GOLD, Ziel ROT; Stage-Zeile „NIBBLES IS AIMING AT BONZO…“. Gilt bis zum nächsten `revolver_aiming`, `revolver_aim`, `revolver_shot`, `revolver_pass` oder `round_end` |
@@ -166,8 +172,10 @@ Plätze, die nicht mehr leben, werden abgelehnt.
 | `card_trigger` | `seat, card` | Karte zerbricht | Toast „SAFETY saved X“ — nur Safety; Skip und Ricochet haben eigene Cues (`skip`, `ricochet`) |
 | `death` | `seat, name, left?` | Licht bricht ein, Blut, Lachen | „ELIMINATED“ |
 | `survive` | `seat, name` | Posaune, Jack enttäuscht | „SURVIVED“ — am Ende eines Events (ausgewichen, gelöscht, geblockt, Safety, verschont, Duell kampflos gewonnen). Nicht bei Revolver-Klicks |
-| `round_end` | `round, alive, out:[seat], survived:[seat], left?:[seat]` — `out` = in dieser Runde ausgeschieden (inkl. Gegangene), `left` = davon gegangen (fehlt, wenn leer), `survived` = war in dieser Runde in Gefahr (anvisiert, beschossen, Messer, Feuer, Hackbeil, Abstimmung, Kürbis gehalten, Bombe, Duell) und lebt noch, `alive` = Lebende danach | Highlights aus | Rundenergebnis-Karte „ROUND 7 – Bonzo is OUT · 12 left“. Kommt nach **jedem** Event direkt vor `RESULT_PAUSE` (4 s), auch vor `winner` |
+| `round_end` | `round, alive, out:[seat], survived:[seat], left?:[seat]` — `out` = in dieser Runde ausgeschieden (inkl. Gegangene), `left` = davon gegangen (fehlt, wenn leer), `survived` = war in dieser Runde in Gefahr (anvisiert, beschossen, Messer, Feuer, Hackbeil, Abstimmung, Kürbis gehalten, Bombe, Duell) und lebt noch, `alive` = Lebende danach | Highlights aus | Rundenergebnis-Karte „ROUND 7 – Bonzo is OUT · 12 left“. Kommt nach **jedem** Event direkt vor `RESULT_PAUSE` (2,5 s), auch vor `winner` |
 | `winner` | `seat, name` (seat 0 = niemand) | Spot, Konfetti | Sieger-Plakat |
+| `seat_taken` | `seat, name, old` — Nachrücker `name` übernimmt den Bot-Platz `seat` von `old`. Kommt zu Beginn einer Runde direkt vor `spin`, NACH dem State (wer sitzt wo) | Funkeln, Schild „NEW: name“ steigt auf | Toast „name takes the seat of old“ (nicht für ihn selbst) |
+| `you_joined` | `seat, old, cards` — nur an den Nachrücker (`Net.ShowTo`) | goldener Blitz, Sting | großes „YOU'RE IN!“ + Toast „You took old's seat · N cards, press C“ |
 
 ## Synchronisierte Werte an Figuren (`character:GetValue`)
 
@@ -202,13 +210,15 @@ Jederzeit muss lesbar sein: (a) Phase, (b) wer beteiligt ist, (c) was ICH tun mu
 
 ## Karten (Shared/Cards.lua)
 
+Seit v0.11 sehen Spieler eigene Namen (Spalte „Name“); im Code und im Protokoll bleiben die ids.
+
 | id | Name | Typ | Wirkung |
 |---|---|---|---|
-| `safety` | Safety | auto | Überlebt einen Schuss (Revolver, Angry Clown, Shooting Gallery, Duell). Verbraucht. Die zuerst verfallende Safety wird zuerst verbraucht. |
-| `skip` | Skip | auto | Wählt Jack dich für ein Event aus, in dem du selbst in Gefahr bist (Angry Clown, Shooting Gallery, Knife, Fire, Vote, Pumpkin, Bomb, Duell), ist ein zufälliger anderer dran. Beim Duell gilt das für beide Duellanten (der Ersatz steht dann vorne, der POP zeigt ihn). Verbraucht. Höchstens ein Skip pro Runde: der Ersatz kann nicht weiter-skippen. |
-| `ricochet` | Ricochet | auto | Ein Schuss auf dich (Revolver, Angry Clown, Shooting Gallery, Duell) trifft stattdessen einen zufälligen anderen Lebenden – auch den Schützen. Verbraucht. Greift vor Safety; keine Kette (beim neuen Opfer greift nur noch Safety). |
-| `guardian` | Guardian | ausspielbar, Ziel: ein lebender Spieler (auch du) mit Platz auf der Hand | Gibt dem Ziel eine Safety mit `rounds_left` = 3 (verfällt nach 3 Runden). |
-| `thief` | Thief | ausspielbar, Ziel: ein anderer lebender Spieler mit Karten | Stiehlt eine zufällige Karte (sie behält uid und Restlaufzeit). |
+| `safety` | Lucky Charm | auto | Überlebt einen Schuss (Revolver, Angry Clown, Shooting Gallery, Duell). Verbraucht. Die zuerst verfallende Safety wird zuerst verbraucht. |
+| `skip` | Body Double | auto | Wählt Jack dich für ein Event aus, in dem du selbst in Gefahr bist (Angry Clown, Shooting Gallery, Knife, Fire, Vote, Pumpkin, Bomb, Duell), ist ein zufälliger anderer dran. Beim Duell gilt das für beide Duellanten (der Ersatz steht dann vorne, der POP zeigt ihn). Verbraucht. Höchstens ein Skip pro Runde: der Ersatz kann nicht weiter-skippen. |
+| `ricochet` | Funhouse Mirror | auto | Ein Schuss auf dich (Revolver, Angry Clown, Shooting Gallery, Duell) trifft stattdessen einen zufälligen anderen Lebenden – auch den Schützen. Verbraucht. Greift vor Safety; keine Kette (beim neuen Opfer greift nur noch Safety). |
+| `guardian` | Bodyguard | ausspielbar, Ziel: ein lebender Spieler (auch du) mit Platz auf der Hand | Gibt dem Ziel eine Safety mit `rounds_left` = 3 (verfällt nach 3 Runden). |
+| `thief` | Pickpocket | ausspielbar, Ziel: ein anderer lebender Spieler mit Karten | Stiehlt eine zufällige Karte (sie behält uid und Restlaufzeit). |
 
 Hand privat (nur Anzahl öffentlich). Maximal 5 Karten (was nicht mehr passt, verfällt). Start: 1 zufällige Karte (nach Gewicht).
 Bots spielen Guardian/Thief selbst: zu Beginn einer Runde mit `Config.CARDS.BOT_PLAY` höchstens eine Karte (Cue `card_play` wie bei Menschen).

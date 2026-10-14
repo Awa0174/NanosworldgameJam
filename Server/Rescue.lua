@@ -13,6 +13,7 @@ local Lobby = DeathBox.Lobby
 
 local CHECK_INTERVAL = 1.0
 local SEAT_TOLERANCE = 120   -- cm
+local WATCHDOG_TIME = 60     -- s ohne Fortschritt -> Show gilt als haengend
 
 DeathBox.Rescue = { rescued = 0 }
 
@@ -21,6 +22,7 @@ local function TooLow(character, floor_z)
 end
 
 local function Check()
+
 	for player, place in pairs(Lobby.where) do
 		local character = player:IsValid() and player:GetControlledCharacter() or nil
 		if (character and character:IsValid() and not character:IsDead()) then
@@ -43,6 +45,20 @@ local function Check()
 					DeathBox.Rescue.rescued = DeathBox.Rescue.rescued + 1
 				end
 			end
+		end
+	end
+
+	-- Watchdog: Eine Show, in der sich zu lange nichts mehr bewegt (kein Timer-Schritt, keine Eingabe), haengt.
+	-- Dann ordentlich beenden, statt Spieler eingefroren sitzen zu lassen. Laengster regulaerer Abstand zwischen
+	-- zwei Schritten ist eine Abfrage-Zeit (wenige Sekunden), WATCHDOG_TIME ist grosszuegig darueber.
+	local now = Server.GetTime()
+	local matches = {}
+	for i, match in ipairs(Lobby.matches) do matches[i] = match end   -- Abort kann Lobby.matches veraendern
+	for _, match in ipairs(matches) do
+		if (not match.disposed and match.last_progress > 0 and now - match.last_progress > WATCHDOG_TIME * 1000) then
+			DeathBox.Rescue.watchdog = (DeathBox.Rescue.watchdog or 0) + 1
+			match.last_progress = now
+			match:Abort("watchdog")
 		end
 	end
 

@@ -14,6 +14,7 @@
 | ✅ 4c | Mi 14.10. (Nacht) | **v0.7 Präsentation:** Welt beim Client, Jack animiert, Spieluhr-Dramaturgie, Nachthimmel/Look, eigene Sounds + Texturen, Fix Wegfliegen, Angry Clown, Rescue | Simulation + strenger Client-Test ok, **Ingame-Test steht aus** |
 | ✅ 4d | Mi 14.10. (Nacht) | **Vorgezogen (Server):** Revolver als Kette (1 Kugel, 6 Kammern, Weitergabe nach Klick), alle 5 Karten (Hand privat, `/card`, Ausspielen mit Prüfung), Skip/Ricochet/Safety, Spare or Eliminate (Tote stimmen mit), Pass the Pumpkin, Split or Steal, Card Deal, Choose a Card, Tempo-Gewichte je Phase, Chat pro Instanz | Simulation: alle Szenarien grün über 120 Seeds, 16 Spieler ≈ 9 min, 32 Spieler ≈ 18 min. **HUD für die neuen Abfragen und Ingame-Test stehen aus** |
 | ✅ 4e | Mi 14.10. (Nacht, nach Screenshot-Feedback) | **v0.8:** Jack 2.0 als Animatronic in der Kiste (dreht sich drin, POP vors Gesicht des Opfers), Revolver mit eigenem 3D-Modell und Nachladen (1/6 → 2/6 → 3/6), Karten-Szenen (Fächer bei Choose a Card), HUD-Panels für alle Abfragen + Kartenhand, Anzeigetafel im Hub, 22 neue Sounds, Vorschau-Renderer für die Client-Welt | Simulation + strenger Client-Test grün; 16 Spieler ≈ 8 min, 32 ≈ 12 min (ohne HUD-gesperrte Events). **Ingame-Test steht aus** |
+| ✅ 4f | Mi 14.10. (abends) | **v0.11 Jam-Fassung:** 12 Spieler, 2 Tische à 8, Bots füllen auf, Nachrücker übernehmen Bot-Plätze; Tempo (8er-Show ca. 5 min), 8 Events aktiv, eigene Namen + Kartenbilder, Admin per Server-Konsole statt Debug, Guard/Watchdog, Flutschutz, Leistung Hub/Zelt | Simulation (alt + Jam-Szenarien), Client- und HUD-Test grün. **Ingame-Test steht aus** (Testplan in `IMPROVEMENTS.md`) |
 | 5 | Fr 16.10. | ~~Karten~~ (vorgezogen, 4d/4e) → **Ingame-Test aller Events und Karten**, Licht/Look einstellen | Jedes Event einmal per `/event` im Spiel gesehen, Liste der Fehler |
 | 6 | Sa 17.10. | Fehler aus Tag 5; optional **Multi-Saw** (zwei Spieler hämmern gegeneinander) | Keine bekannten Fehler aus dem Ingame-Test |
 | 7 | So 18.10. | Eigenes Asset Pack (Jack-Modell, Map) einbauen, falls fertig; Tempo nachjustieren | 16er-Partie mit Bots in ca. 8–10 Minuten |
@@ -36,6 +37,6 @@ Nie gestrichen: Jack mit Drehung, Revolver, Spare or Eliminate, Atmosphäre, Mul
 
 - [x] Jam-Regeln: Nachbauten sind erlaubt
 - [ ] Eigenes Asset Pack (Jack, Map, Sounds, Musik) am Windows-PC mit dem ADK bauen, siehe `ASSETS.md`. Spätestens 20.10. auf den Server, damit Zeit zum Testen bleibt
-- [ ] Server-Admin: bis spätestens 20.10. auf den normalen Steam-Zweig umstellen und mit `--steam_app "game"` starten
+- [ ] Server-Admin: bis spätestens 20.10. auf den normalen Steam-Zweig umstellen und mit `--steam_app "game"` starten, `max_players = 12`
 - [ ] Testspieler für den 20./21.10. organisieren (möglichst viele, Rest mit Bots)
 - [ ] Jam-Eintrag auf nanos-world.com anlegen

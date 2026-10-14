@@ -10,26 +10,34 @@ DeathBox.Config = {
 	-- Jeder Tisch (Match) und jeder Hub-Bereich laeuft in einer eigenen nanos-"Dimension".
 	-- Spieler sehen nur die Figuren und Objekte ihrer Dimension. So laufen beliebig viele
 	-- identische Raeume an derselben Stelle der Welt, ohne sich gegenseitig zu stoeren.
+	-- Jam-Server (v0.11): max. 12 Spieler (max_players in der Server-Config.toml), 2 Tische a 8 Plaetze.
 	HUB_CAPACITY = 64,          -- Spieler pro Hub-Bereich (danach wird ein weiterer identischer Hub geoeffnet)
-	MAX_MATCHES = 64,           -- so viele Tische duerfen gleichzeitig laufen (64 x 16 = 1024 Plaetze)
+	MAX_MATCHES = 2,            -- so viele Tische duerfen gleichzeitig laufen
 	DIMENSION_HUB_FIRST = 2,    -- Dimensionen ab hier fuer Hubs (1 = Standard von nanos, bleibt leer)
 	DIMENSION_MATCH_FIRST = 1000, -- Dimensionen ab hier fuer Tische
 
 	-- ===============================================================
 	-- Matchmaking
 	-- ===============================================================
-	MIN_PLAYERS = 2,            -- ab so vielen wartenden Spielern wird ein Tisch eroeffnet
-	TABLE_SEATS = 16,           -- Plaetze pro Tisch (16 = wie im Original, maximal 32)
-	QUEUE_COUNTDOWN = 15,       -- Countdown, bis ein neuer Tisch startet
+	-- Leitlinie: Spieler spielen mit Spielern. Erst wird der laufende Tisch gefuellt (Nachruecker uebernehmen
+	-- Bot-Plaetze), erst danach oeffnet ein weiterer (Server/Lobby.lua).
+	MIN_PLAYERS = 2,            -- so viele Plaetze (Menschen + Bots) braucht ein neuer Tisch; ein Mensch reicht immer,
+	                            -- wenn BOT_FILL den Rest auffuellt
+	TABLE_SEATS = 8,            -- Plaetze pro Tisch (maximal 32)
+	BOT_FILL = true,            -- jeden neuen Tisch bis TABLE_SEATS mit Bots auffuellen
+	JOIN_RUNNING = true,        -- Wartende ruecken in laufende Shows nach und uebernehmen zur naechsten Runde einen Bot
+	JOIN_MIN_ALIVE = 4,         -- ... aber nur, solange noch so viele leben (im Finale kommt niemand mehr dazu)
+	QUEUE_COUNTDOWN = 20,       -- Countdown, bis ein neuer Tisch startet (Zeit, damit Freunde noch dazukommen)
 	QUEUE_COUNTDOWN_FULL = 5,   -- ... verkuerzt, sobald genug Spieler fuer einen vollen Tisch warten
-	GAME_END_DELAY = 10,        -- Pause nach dem Sieg bis zur Rueckkehr in den Hub
+	GAME_END_DELAY = 8,         -- Pause nach dem Sieg bis zur Rueckkehr in den Hub
 	DEAD_RESPAWN_DELAY = 3,     -- so lange liegt ein Ausgeschiedener, bevor er als Zuschauer aufsteht
 	CHAT_INTERVAL = 0.75,       -- Chat: hoechstens eine Zeile pro Spieler in dieser Zeit (Flutschutz)
 	CHAT_MAX_LENGTH = 200,      -- Chat: laengere Zeilen werden gekuerzt
 
 	-- ===============================================================
 	-- Ablauf einer Runde (Sekunden). Leitlinie (Spielertest v0.8: "VIEL zu schnell, man weiss nie, was dran ist"):
-	-- LESBARKEIT vor Tempo. Jeder sieht jederzeit Phase, Beteiligte, eigene Aufgabe und Restzeit (docs/PROTOCOL.md, "Klarheit").
+	-- LESBARKEIT vor Tempo. v0.11 (Jam, "kurzer Spass", 8er-Tische): die Pausen ZWISCHEN den Ereignissen sind kuerzer,
+	-- die Lesbarkeit kommt aus Stage-Zeile, Karte und Countdown. Ziel: 8er-Show ca. 5 min. Jeder sieht jederzeit Phase, Beteiligte, eigene Aufgabe und Restzeit (docs/PROTOCOL.md, "Klarheit").
 	-- Die Auswahl ist auf die Spieluhr abgestimmt (je Spin eine zufaellige Melodie aus SPIN_TUNES, jede genau SPIN_TIME lang):
 	--    0.0 s  Melodie startet, Jack lugt aus der Kiste und dreht sich langsam (1-2 Umdrehungen), Suchscheinwerfer
 	--   10.0 s  Melodie endet mit Ritardando, Jack steht still vor dem Opfer: Stille + Herzschlag (HOLD_TIME)
@@ -37,18 +45,18 @@ DeathBox.Config = {
 	-- SPIN_TIME nur zusammen mit der Musik aendern (scratchpad audio/synth.py). Es gibt bewusst KEINEN schnellen Spin mehr.
 	-- Dauert eine 16er-Partie im Median laenger als ca. 18 min: toedlicher machen (EVENT_WEIGHTS), NIE die Show kuerzen.
 	-- ===============================================================
-	INTRO_TIME = 12,            -- Showbeginn: Spieluhr, Jack springt aus der Box, Begruessung, "How to play" im HUD
-	INTRO_POP_AT = 10.0,        -- ... POP im Intro (Ende der Intro-Melodie, "Pop! goes the weasel")
+	INTRO_TIME = 10,            -- Showbeginn: Spieluhr, Jack springt aus der Box, Begruessung, "How to play" im HUD
+	INTRO_POP_AT = 8.0,         -- ... POP im Intro (Ende der Intro-Melodie, "Pop! goes the weasel")
 	INTRO_MUSIC = "spin_weasel",
-	SPIN_TIME = 10.0,           -- Jack dreht sich (Melodie mit Ritardando, endet auf dem Stopp)
-	HOLD_TIME = 2.0,            -- Stille + Herzschlag, Licht auf dem Opfer, dann POP
+	SPIN_TIME = 8.0,            -- Jack dreht sich (Melodie mit Ritardando, endet auf dem Stopp; v0.11: Melodien neu, je 8 s)
+	HOLD_TIME = 1.5,            -- Stille + Herzschlag, Licht auf dem Opfer, dann POP
 	SPIN_TURNS = 1,             -- volle Umdrehungen vor dem Rest bis zum Opfer: Weg = 1-2 Umdrehungen ab Jacks Blickrichtung
 	SPIN_TUNES = { "spin_rosie", "spin_weasel", "spin_bridge", "spin_lullaby" },   -- zufaellig je Spin, nie zweimal dieselbe
 	SPIN_MUSIC = "spin_weasel", -- Ersatz, falls ein Cue keine Melodie nennt
-	REVEAL_TIME = 3.0,          -- POP: Jack vor dem Gesicht des Opfers, Name gross im Bild
-	CARD_TIME = 5.0,            -- Event-Karte (Name, wer, so geht's, YOU: ...), beim ersten Mal pro Show
-	CARD_TIME_REPEAT = 3.5,     -- ... wenn das Event in dieser Show schon dran war
-	RESULT_PAUSE = 4.0,         -- Rundenergebnis ("ROUND 7 - Bonzo is OUT - 12 left"), durchatmen
+	REVEAL_TIME = 2.5,          -- POP: Jack vor dem Gesicht des Opfers, Name gross im Bild
+	CARD_TIME = 4.5,            -- Event-Karte (Name, wer, so geht's, YOU: ...), beim ersten Mal pro Show
+	CARD_TIME_REPEAT = 2.0,     -- ... wenn das Event in dieser Show schon dran war (man kennt es schon)
+	RESULT_PAUSE = 2.5,         -- Rundenergebnis ("ROUND 7 - Bonzo is OUT - 6 left"), durchatmen
 	BOT_THINK_TIME = 2.0,       -- so lange "ueberlegt" ein Bot
 	SKIP_TIME = 3.0,            -- Karte Skip: Jack dreht weiter zum naechsten Opfer, danach erst der POP
 	RICOCHET_TIME = 1.2,        -- Karte Ricochet: Flugzeit der abgelenkten Kugel bis zum neuen Opfer
@@ -66,21 +74,25 @@ DeathBox.Config = {
 	-- ca. 15 min), 32 Spieler ca. 25-26 min. Grenze laut Vorgabe: 16er-Median ueber ca. 18 min -> toedlicher machen.
 	-- ===============================================================
 	EVENT_PHASES = { HUGE = 17, MANY = 9, MID = 5 },
+	FIRST_EVENT = "revolver",   -- erste Runde jeder Show (das Aushaengeschild, erklaert das Spiel); nil = Zufall
+	-- v0.11 (Jam, 8er-Tische): nur noch die Spalten "mittel" (5-8 Lebende) und "wenige" (2-4) sind im Spiel.
+	-- Abgeschaltet (0): stab, bomb, splitsteal, choosecard - fuer fremde Spieler unter Zeitdruck schwer zu verstehen
+	-- (Regeltext lesen, zwei Stufen, Absprache in einer Fremdsprache) oder niemand stirbt. Der Code bleibt, /event geht.
 	EVENT_WEIGHTS = {
 		--             riesig  viele  mittel  wenige
 		revolver   = { 2,      2.5,   3,      3 },
-		angry      = { 4,      4,     1.5,    0.5 },   -- braucht 3 Lebende
+		angry      = { 4,      4,     2,      0.5 },   -- braucht 3 Lebende
 		gallery    = { 7,      0,     0,      0 },     -- nur an grossen Tischen (drei Ziele pro Runde)
 		knife      = { 3,      3,     3,      3 },
 		fire       = { 2,      2,     2,      2 },
-		stab       = { 0.6,    1.2,   2,      2 },
+		stab       = { 0,      0,     0,      0 },
 		vote       = { 2.5,    2.5,   2,      1 },
-		pumpkin    = { 2,      2.5,   2,      1.5 },
-		bomb       = { 0.7,    1.2,   2,      1 },
-		duel       = { 2,      2,     1,      1 },     -- braucht 3 Lebende (beide Duellanten koennen sterben)
-		deal       = { 0.4,    0.6,   0.8,    0.3 },
-		splitsteal = { 0.5,    0.8,   1,      0.5 },
-		choosecard = { 0.4,    0.6,   0.8,    0.5 },
+		pumpkin    = { 2,      2.5,   2.5,    1.5 },
+		bomb       = { 0,      0,     0,      0 },
+		duel       = { 2,      2,     1.5,    1.5 },   -- braucht 3 Lebende (beide Duellanten koennen sterben)
+		deal       = { 0.4,    0.6,   0.8,    0.4 },   -- einzige Atempause: Karten-Nachschub
+		splitsteal = { 0,      0,     0,      0 },
+		choosecard = { 0,      0,     0,      0 },
 	},
 
 	-- Abfrage-Arten, die das HUD (Client/UI/hud.js) schon anzeigen kann (docs/PROTOCOL.md, "Abfragen").
@@ -105,9 +117,9 @@ DeathBox.Config = {
 		-- false: klassisch, die eine Kugel bleibt, wo sie ist. Chance pro Abzug 1/6, 1/5, 1/4 ... (kumuliert 1/6, 2/6, 3/6).
 		LOAD_EXTRA = true,
 		GIVE_TIME = 2.5,        -- Jack wirft dem Halter den Revolver in die Hand ("GET READY"), dann erst die Zielwahl
-		CHOOSE_TIME = 12,       -- so lange darf der Halter zielen (Maus) und abdruecken (sonst zielt Jack auf den Halter)
-		AIM_TIME = 2.5,         -- Spannungspause zwischen Zielen und Abdruecken
-		PASS_TIME = 3.0,        -- nach einem Klick: Revolver fliegt weiter, dann darf der naechste Halter zielen
+		CHOOSE_TIME = 8,        -- so lange darf der Halter zielen (Maus) und abdruecken (sonst zielt Jack auf den Halter)
+		AIM_TIME = 2.0,         -- Spannungspause zwischen Zielen und Abdruecken
+		PASS_TIME = 2.6,        -- nach einem Klick: Revolver fliegt weiter, dann darf der naechste Halter zielen
 		PASS_DELAY = 0.8,       -- ... davon haelt der alte Halter ihn noch so lange (Klick wirken lassen), dann fliegt er
 		                        -- (revolver_pass): der neue Halter hat ihn PASS_TIME - PASS_DELAY vor der Zielwahl in der Hand
 		RESULT_TIME = 3.5,      -- Pause nach dem Knall
@@ -162,20 +174,20 @@ DeathBox.Config = {
 	-- Spare or Eliminate: alle am Tisch (auch Ausgeschiedene) stimmen ueber den Gewaehlten ab. Keine Karte rettet.
 	VOTE = {
 		INTRO_TIME = 2.5,       -- Licht auf das Opfer, "GET READY TO VOTE", dann oeffnet die Abstimmung
-		TIME = 15,              -- Abstimmungszeit (endet frueher, sobald alle abgestimmt haben)
+		TIME = 10,              -- Abstimmungszeit (endet frueher, sobald alle abgestimmt haben)
 		CLOSE_TIME = 1.5,       -- alle haben gewaehlt: kurz Luft holen bis zur Auszaehlung
 		RESULT_TIME = 3.5,      -- Ergebnis zeigen, dann das Urteil
 		END_TIME = 1.8,         -- nach dem Urteil, bevor die Runde endet
 		SECRET = false,         -- true = Zaehlung erst im Ergebnis sichtbar
-		BOT_KILL = 0.6,         -- so oft stimmen Bots fuer ELIMINATE
-		BOT_DELAY = { 1.5, 9.0 },   -- Bots stimmen verteilt ab, damit die Zaehlung lebt
+		BOT_KILL = 0.5,         -- so oft stimmen Bots fuer ELIMINATE
+		BOT_DELAY = { 1.5, 7.0 },   -- Bots stimmen verteilt ab, damit die Zaehlung lebt
 	},
 
 	-- Pass the Pumpkin: heisse Kartoffel. Der Halter wirft den Kuerbis an den linken oder rechten Nachbarn,
 	-- bis die geheime Zuendschnur abgebrannt ist. Wer ihn dann haelt, fliegt in die Luft. Keine Karte rettet.
 	PUMPKIN = {
 		THROW_TIME = 2.6,       -- Jack zuendet und wirft den Kuerbis zum ersten Halter ("CATCH! GET READY")
-		FUSE = { 8, 15 },       -- Zuendschnur in Sekunden ab der Landung (geheim, zufaellig)
+		FUSE = { 6, 11 },       -- Zuendschnur in Sekunden ab der Landung (geheim, zufaellig)
 		PASS_TIME = 3,          -- Zeit pro Wurf-Abfrage (laeuft sie ab, kommt eine neue, solange die Schnur brennt)
 		CATCH_TIME = 0.6,       -- Flugzeit: so lange kann der Faenger noch nicht weiterwerfen
 		BOT_DELAY = { 0.8, 2.4 },   -- Bots werfen nach so vielen Sekunden weiter
@@ -281,10 +293,11 @@ DeathBox.Config = {
 	},
 
 	-- ===============================================================
-	-- Debug: Chat-Befehle /start, /bots, /status, /event, Cheats
-	-- VOR DEM JAM AUF false STELLEN, sonst kann jeder Spieler Tische starten.
+	-- Debug: Chat-Befehle /start, /bots, /status, /event, /card, Cheats, Taste B (Noclip), Selbstdiagnose
+	-- true = JEDER Spieler ist Admin (nur auf einem privaten Testserver!). Fuer den Jam bleibt es false;
+	-- einzelne Spieler schaltet der Server-Betreiber in der Server-Konsole frei:  db_admin <name oder id>
 	-- ===============================================================
-	DEBUG_COMMANDS = true,
+	DEBUG_COMMANDS = false,
 }
 
 -- Sicherheitsnetz: Plaetze im erlaubten Bereich halten

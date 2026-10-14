@@ -87,6 +87,8 @@ function Match.Create(players, bot_count)
 		round_left = {},       -- ... davon gegangen
 		last_tune = Config.INTRO_MUSIC,   -- zuletzt gespielte Spieluhr-Melodie (nie zweimal hintereinander dieselbe)
 		turned = {},           -- seat_index -> true: sitzende Figur schaut nicht zur Mitte (Revolver-Halter zielt)
+		joiners = {},          -- Nachruecker (Reihenfolge): schauen im Zelt zu, uebernehmen zur naechsten Runde einen Bot
+		last_progress = 0,     -- Server-Zeit des letzten Ablauf-Schritts (Watchdog, Server/Rescue.lua)
 	}, Match)
 	Match.next_id = Match.next_id + 1
 
@@ -136,9 +138,10 @@ function Match.Create(players, bot_count)
 		match:Say(Text.Format(Text.JACK.GAME_START))
 	end)
 	-- Erst nach dem Intro geht es los (eigener Timer, der Begruessungs-Timer oben wird dabei ersetzt)
+	match.last_progress = Server.GetTime()
 	Timer.SetTimeout(function()
 		if (match.disposed or match.state ~= STATE.INTRO) then return end
-		match:StartPlaying()
+		match:Guard("StartPlaying", function() match:StartPlaying() end)
 	end, Config.INTRO_TIME * 1000)
 	return match
 end
@@ -152,11 +155,37 @@ end
 -- Hilfen
 -- ===================================================================
 
+-- Fuehrt einen Schritt des Ablaufs geschuetzt aus. Ein Lua-Fehler darf eine Show nie einfrieren (alle Spieler sitzen
+-- dann fest): Fehler loggen und die Show ordentlich beenden. Merkt sich den Zeitpunkt fuer den Watchdog.
+function Match:Guard(where, callback)
+	self.last_progress = Server.GetTime()
+	local ok, err = pcall(callback)
+	if (not ok) then
+		Console.Error("[DeathBox] [Tisch %d] Fehler in %s: %s", self.id, tostring(where), tostring(err))
+		self:Abort("error")
+	end
+end
+
+-- Notbremse: Show sofort beenden (Fehler oder Watchdog). Erst der normale Weg (Sieger-Anzeige), notfalls Dispose.
+function Match:Abort(reason)
+	if (self.aborting or self.disposed) then return end
+	self.aborting = true
+	Console.Warn("[DeathBox] [Tisch %d] Show wird abgebrochen (%s)", self.id, tostring(reason))
+	-- Laeuft die Show noch: normal beenden (Sieger-Anzeige, Dispose nach GAME_END_DELAY).
+	-- Ist sie schon vorbei (der Fehler kam z. B. beim Aufloesen) oder klappt End nicht: sofort aufloesen.
+	local was_ended = (self.state == STATE.ENDED)
+	local ok = was_ended or pcall(function() self:End() end)
+	if (was_ended or not ok or self.state ~= STATE.ENDED) then
+		pcall(function() self:Dispose() end)
+	end
+	self.aborting = false
+end
+
 function Match:SetMatchTimer(seconds, callback)
 	self:ClearMatchTimer()
 	self.timer_id = Timer.SetTimeout(function()
 		self.timer_id = nil
-		if (not self.disposed) then callback() end
+		if (not self.disposed) then self:Guard("Match-Timer", callback) end
 	end, math.max(0, math.floor(seconds * 1000 + 0.5)))
 end
 
@@ -218,7 +247,7 @@ function Match:FindSeatByPlayer(player)
 end
 
 function Match:HasPlayer(player)
-	return self:FindSeatByPlayer(player) ~= nil or self.spectators[player] == true
+	return self:FindSeatByPlayer(player) ~= nil or self.spectators[player] == true or self:IsJoiner(player)
 end
 
 function Match:CountHumans()
@@ -227,6 +256,120 @@ function Match:CountHumans()
 		if (seat.player) then count = count + 1 end
 	end
 	return count
+end
+
+-- ===================================================================
+-- Nachruecker (Lobby.CheckQueue -> Distribute)
+-- ===================================================================
+-- Wer joint, waehrend eine Show mit Bots laeuft, kommt sofort ins Zelt und schaut zu. Zu Beginn der naechsten
+-- Runde (Match:NextTurn, nie mitten in einem Event) uebernimmt er den Platz eines lebenden Bots - mit dessen
+-- Karten. So spielen Menschen mit Menschen, statt in getrennten Bot-Shows zu landen.
+
+function Match:IsJoiner(player)
+	for _, joiner in ipairs(self.joiners) do
+		if (joiner == player) then return true end
+	end
+	return false
+end
+
+function Match:CountLivingBots()
+	local count = 0
+	for _, seat in ipairs(self.seats) do
+		if (seat.alive and seat.is_bot) then count = count + 1 end
+	end
+	return count
+end
+
+-- Bot-Plaetze, die noch kein Nachruecker reserviert hat. 0, wenn die Show keine Nachruecker mehr nimmt
+-- (vorbei oder zu wenige Lebende: im Finale soll niemand einfach dazukommen).
+function Match:OpenBotSeats()
+	if (self.disposed or self.state == STATE.ENDED) then return 0 end
+	if (self:CountAlive() < (Config.JOIN_MIN_ALIVE or 4)) then return 0 end
+	return math.max(0, self:CountLivingBots() - #self.joiners)
+end
+
+function Match:AddJoiner(player)
+	if (not player or not player:IsValid() or self:IsJoiner(player)) then return end
+	table.insert(self.joiners, player)
+	local chair = math.random(self.seat_count)
+	local location, rotation = Layout.SpectatorTransform(chair, self.seat_count)
+	Net.Place(player, "match", self:PlaceInfo())
+	Net.SendHand(player, { cards = {} })
+	Characters.Place(player, self.dimension, location, rotation)
+	Chat.SendMessage(player, Text.Format(Text.JOIN_WAIT))
+	Log(self, "%s rueckt nach (wartet auf die naechste Runde)", player:GetName())
+	self:PushState()
+end
+
+function Match:RemoveJoiner(player)
+	for i, joiner in ipairs(self.joiners) do
+		if (joiner == player) then
+			table.remove(self.joiners, i)
+			return true
+		end
+	end
+	return false
+end
+
+-- Nachruecker setzen sich auf lebende Bot-Plaetze (zufaellig). Nur zwischen den Runden.
+-- Wer keinen Platz mehr bekommt (Bots inzwischen tot, Finale erreicht), wird freigegeben, wenn er anderswo
+-- spielen koennte (freier Tisch oder ein anderer mit Bot-Plaetzen); sonst schaut er das Finale zu Ende.
+function Match:AdmitJoiners()
+	if (#self.joiners == 0 or self.state ~= STATE.PLAYING) then return end
+	local admitted = false
+	if (self:CountAlive() >= (Config.JOIN_MIN_ALIVE or 4)) then
+		while (#self.joiners > 0) do
+			local bots = {}
+			for index, seat in ipairs(self.seats) do
+				if (seat.alive and seat.is_bot) then table.insert(bots, index) end
+			end
+			if (#bots == 0) then break end
+			local player = table.remove(self.joiners, 1)
+			if (player:IsValid()) then
+				self:TakeOverSeat(player, bots[math.random(#bots)])
+				admitted = true
+			end
+		end
+	end
+	if (#self.joiners > 0 and DeathBox.Lobby.HasRoomElsewhere(self)) then
+		local left = self.joiners
+		self.joiners = {}
+		for _, player in ipairs(left) do
+			if (player:IsValid() and DeathBox.Lobby.where[player] and DeathBox.Lobby.where[player].match == self) then
+				Chat.SendMessage(player, Text.Format(Text.JOIN_MOVED))
+				DeathBox.Lobby.SendToHub(player)
+			end
+		end
+		admitted = true
+	end
+	if (admitted) then self:PushState() end
+end
+
+function Match:TakeOverSeat(player, index)
+	local seat = self.seats[index]
+	local old_name = seat.name
+	if (seat.bot_character and seat.bot_character:IsValid()) then seat.bot_character:Destroy() end
+	seat.bot_character = nil
+	seat.player = player
+	seat.is_bot = false
+	seat.name = player:GetName()
+
+	local location, rotation, look = Layout.SitTransform(seat.chair, self.seat_count)
+	local character = player:GetControlledCharacter()
+	if (not character or not character:IsValid() or character:IsDead()) then
+		character = Characters.Place(player, self.dimension, location, rotation)
+	end
+	Characters.Sit(character, location, rotation)
+	Characters.MarkSeat(character, index, seat.chair)
+	player:SetCameraRotation(look)
+	DeathBox.Lobby.where[player] = { match = self }
+	Hand.Sync(self, index)   -- die Karten des Bots gehoeren jetzt ihm
+
+	Log(self, "%s uebernimmt den Platz von %s (Platz %d)", seat.name, old_name, index)
+	self:PushState()   -- erst der neue Zustand (wer sitzt wo), dann die Ansage: so erkennt jeder HUD, ob er selbst gemeint ist
+	self:Say(Text.Format(Text.JACK.SEAT_TAKEN, { name = seat.name, old = old_name }))
+	self:Show("seat_taken", { seat = index, name = seat.name, old = old_name })
+	Net.ShowTo(player, "you_joined", { seat = index, seat_chair = seat.chair, seat_count = self.seat_count, old = old_name, cards = #seat.cards })
 end
 
 function Match:ChairAngle(seat_index)
@@ -311,6 +454,8 @@ end
 
 function Match:StartPlaying()
 	self.state = STATE.PLAYING
+	-- Erste Runde jeder Show: ein Event, das jeder sofort versteht (Config.FIRST_EVENT), danach Zufall
+	if (not self.forced_event and Config.FIRST_EVENT) then self.forced_event = Config.FIRST_EVENT end
 	self:PushState()
 	self:NextTurn()
 end
@@ -318,6 +463,7 @@ end
 -- Neue Runde: verfallende Karten zaehlen herunter, vielleicht spielt ein Bot eine Karte, dann waehlt Jack
 function Match:NextTurn()
 	if (self.state ~= STATE.PLAYING) then return end
+	self:AdmitJoiners()
 	self.round = self.round + 1
 	Hand.Tick(self)
 	Hand.BotTurn(self)
@@ -609,7 +755,11 @@ function Match:Dispose()
 		if (seat.player and seat.player:IsValid()) then table.insert(players, seat.player) end
 		if (seat.bot_character and seat.bot_character:IsValid()) then seat.bot_character:Destroy() end
 	end
-	for player in pairs(self.spectators) do
+	local extra = {}
+	for player in pairs(self.spectators) do table.insert(extra, player) end
+	for _, player in ipairs(self.joiners) do table.insert(extra, player) end
+	self.joiners = {}
+	for _, player in ipairs(extra) do
 		local listed = false
 		for _, p in ipairs(players) do if (p == player) then listed = true end end
 		if (not listed and player:IsValid()) then table.insert(players, player) end
@@ -628,6 +778,14 @@ end
 -- Das laufende Event erfaehrt es immer (auch von Ausgeschiedenen, die z. B. gerade abstimmen).
 function Match:OnPlayerLeave(player)
 	self.spectators[player] = nil
+	if (self:RemoveJoiner(player)) then
+		if (self:CountHumans() == 0 and next(self.spectators) == nil and #self.joiners == 0) then
+			self:Dispose()
+		else
+			self:PushState()
+		end
+		return
+	end
 
 	local seat, index = self:FindSeatByPlayer(player)
 	if (not seat) then return end
@@ -652,7 +810,7 @@ function Match:OnPlayerLeave(player)
 	end
 
 	-- Keine echten Spieler mehr: Show sofort beenden, spart Server-Leistung
-	if (self:CountHumans() == 0 and next(self.spectators) == nil) then
+	if (self:CountHumans() == 0 and next(self.spectators) == nil and #self.joiners == 0) then
 		self:Dispose()
 		return
 	end
@@ -676,7 +834,9 @@ function Match:HandleInput(player, ask_id, choice)
 	if (not seat.alive and not self.event:IsAsking(index)) then return end
 	-- Abgelehnte Eingaben (Doppelklick, veraltete Abfrage, ungueltige Wahl) still ignorieren.
 	-- Nur im Testmodus loggen, damit 999 Spieler das Log nicht fluten koennen.
-	if (not self.event:HandleInput(index, ask_id, choice) and Config.DEBUG_COMMANDS) then
+	local accepted = false
+	self:Guard("Eingabe", function() accepted = self.event:HandleInput(index, ask_id, choice) end)
+	if (not accepted and Config.DEBUG_COMMANDS) then
 		Console.Warn("[DeathBox] Ungueltige Eingabe von %s: %s", player:GetName(), tostring(choice))
 	end
 end
@@ -687,7 +847,9 @@ function Match:HandleAim(player, ask_id, target)
 	if (self.state ~= STATE.PLAYING or not self.event) then return false end
 	local seat, index = self:FindSeatByPlayer(player)
 	if (not seat or not seat.alive) then return false end
-	return self.event:HandleAim(index, ask_id, target)
+	local accepted = false
+	self:Guard("Zielen", function() accepted = self.event:HandleAim(index, ask_id, target) end)
+	return accepted
 end
 
 -- Oeffentlicher Zustand: nur, was ALLE sehen duerfen (Anzahl Karten, nicht welche)
@@ -705,10 +867,15 @@ function Match:BuildSnapshot()
 			cards = #seat.cards,
 		})
 	end
+	local joining = {}
+	for _, player in ipairs(self.joiners) do
+		if (player:IsValid()) then table.insert(joining, player:GetID()) end
+	end
 	return {
 		match = self.id,
 		phase = self.state,
 		seats = seats,
+		joining = joining,
 		seat_count = self.seat_count,
 		turn = self.current_index,
 		round = self.round,

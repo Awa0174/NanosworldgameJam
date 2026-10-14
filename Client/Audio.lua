@@ -21,7 +21,7 @@ local Audio = DeathBox.Audio
 -- Ende ist - nur wenn hold angegeben ist (der Spin gibt ihn an, das Intro nicht: dort kommt der POP direkt am Ende).
 -- Loop-Schluessel "heart": ein spaeter gestarteter Herzschlag unter demselben Schluessel ersetzt diesen.
 -- Name -> Laenge in Sekunden.
-Audio.SPIN_TUNES = { spin_rosie = 10.0, spin_weasel = 10.0, spin_bridge = 10.0, spin_lullaby = 10.0 }
+Audio.SPIN_TUNES = { spin_rosie = 8.0, spin_weasel = 8.0, spin_bridge = 8.0, spin_lullaby = 8.0 }   -- = Config.SPIN_TIME (v0.11: 8 s)
 Audio.HOLD_HEART_VOLUME = 0.7
 
 -- Zweite Schicht je Ort, leise unter der Atmo (Lautstaerke relativ zu ambience_volume).

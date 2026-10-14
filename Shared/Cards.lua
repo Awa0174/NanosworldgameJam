@@ -1,5 +1,7 @@
 -- Shared/Cards.lua
--- Karten: Name, Beschreibung, Typ, Zielregel, Bild, Haeufigkeit. Liegt in Shared, damit HUD und Server
+-- Karten: Name, Beschreibung, Typ, Zielregel, Bild, Haeufigkeit.
+-- v0.11: eigene Namen statt der Namen aus dem Roblox-Vorbild. Die ids (safety, skip, ...) bleiben im Code gleich,
+-- Spieler sehen nur name/description (und die Schrift auf den Kartenbildern). Liegt in Shared, damit HUD und Server
 -- dieselben Daten haben. Die WIRKUNG einer Karte wird ausschliesslich auf dem Server ausgefuehrt:
 --   Server/Cards.lua    Hand (geben, nehmen, verfallen), Ausspielen (guardian, thief)
 --   Server/Match.lua    skip (bei der Auswahl, vor dem POP)
@@ -22,7 +24,7 @@ DeathBox = DeathBox or {}
 
 DeathBox.Cards = {
 	safety = {
-		name = "Safety",
+		name = "Lucky Charm",
 		description = "Survive one gunshot. Breaks after use.",
 		type = "auto",
 		events = { revolver = true, angry = true, gallery = true, duel = true },
@@ -30,7 +32,7 @@ DeathBox.Cards = {
 		weight = 2.5,
 	},
 	skip = {
-		name = "Skip",
+		name = "Body Double",
 		description = "When Jack picks you for a deadly game, someone else takes your place.",
 		type = "auto",
 		-- nur Events, in denen der Gewaehlte selbst in Gefahr ist (beim Revolver und beim Messer
@@ -40,23 +42,23 @@ DeathBox.Cards = {
 		weight = 2,
 	},
 	ricochet = {
-		name = "Ricochet",
-		description = "A bullet meant for you bounces off and hits a random other player.",
+		name = "Funhouse Mirror",
+		description = "A bullet meant for you bounces off the mirror and hits a random other player.",
 		type = "auto",
 		events = { revolver = true, angry = true, gallery = true, duel = true },
 		art = "ricochet",
 		weight = 2,
 	},
 	guardian = {
-		name = "Guardian",
-		description = "Give a living player (or yourself) a Safety that breaks after 3 rounds.",
+		name = "Bodyguard",
+		description = "Give a living player (or yourself) a Lucky Charm that lasts 3 rounds.",
 		type = "playable",
 		target = "alive",
 		art = "guardian",
 		weight = 1.5,
 	},
 	thief = {
-		name = "Thief",
+		name = "Pickpocket",
 		description = "Steal a random card from another player.",
 		type = "playable",
 		target = "other_with_cards",

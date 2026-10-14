@@ -39,6 +39,11 @@ Player.Subscribe("Spawn", function(player)
 	Lobby.OnPlayerJoin(player)
 end)
 
+-- Client ist fertig geladen: jetzt kommt auch eine Chat-Zeile sicher an
+Player.Subscribe("Ready", function(player)
+	Lobby.OnPlayerReady(player)
+end)
+
 -- Spieler verlaesst den Server: zuerst die Spiellogik informieren, dann aufraeumen
 Player.Subscribe("Destroy", function(player)
 	Lobby.OnPlayerLeave(player)

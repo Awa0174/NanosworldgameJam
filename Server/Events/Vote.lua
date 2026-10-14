@@ -2,7 +2,7 @@
 -- Event "Spare or Eliminate": Der ganze Tisch stimmt ueber den Gewaehlten ab, auch die Ausgeschiedenen.
 --
 -- Regeln:
---   - Waehler: jeder Platz mit verbundenem Spieler (lebend oder ausgeschieden) und jeder Bot, ausser dem Opfer.
+--   - Waehler: jeder Platz mit verbundenem Spieler (lebend oder ausgeschieden) und jeder LEBENDE Bot, ausser dem Opfer.
 --     Bots stimmen mit Config.VOTE.BOT_KILL fuer ELIMINATE.
 --   - Die Stimmen werden live gezaehlt (State event.data). Haben alle gewaehlt, endet die Abstimmung sofort.
 --   - Mehrheit entscheidet. Gleichstand (auch 0:0) = Jack wirft eine Muenze.
@@ -38,7 +38,9 @@ end
 local function Voters(ctx)
 	local result = {}
 	for index, seat in ipairs(ctx.match.seats) do
-		if (index ~= ctx.actor_index and (seat.player or seat.is_bot)) then table.insert(result, index) end
+		-- Menschen stimmen immer mit (auch ausgeschiedene), Bots nur, solange sie leben: sonst entscheiden an einem
+		-- Tisch mit vielen Bots die toten Bots, und die Stimmen der Menschen gehen unter.
+		if (index ~= ctx.actor_index and (seat.player or (seat.is_bot and seat.alive))) then table.insert(result, index) end
 	end
 	return result
 end

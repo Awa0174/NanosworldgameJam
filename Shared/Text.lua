@@ -23,7 +23,11 @@ DeathBox.Text = {
 	HUB_JOIN = "Welcome to the fairground, {name}. The show is about to begin...",
 	QUEUE_WAITING = "Waiting for more victims ({count}/{needed})",
 	QUEUE_COUNTDOWN = "Next show starts in",
-	MATCH_SPECTATING = "You are out. Watch the show... or type /leave",
+	MATCH_SPECTATING = "You are out. Watch the show... or press NEXT SHOW to play again.",
+	JOIN_WAIT = {
+		"A show is already running! Watch for a moment - you take over a puppet's seat when the next round starts.",
+	},
+	JOIN_MOVED = "No puppet seat left at this table - off to the next show!",
 
 	-- Jack (Untertitel)
 	JACK = {
@@ -39,9 +43,14 @@ DeathBox.Text = {
 			"{name}! Come on, don't be shy.",
 		},
 		SKIPPED = {
-			"SKIP! {name} slips away... Jack spins on to {new}!",
+			"A BODY DOUBLE! {name} slips away... Jack spins on to {new}!",
 			"Not you, {name}? Fine. {new}, then!",
-			"{name} plays a SKIP card. Lucky you, {new}!",
+			"{name} sends a body double. Lucky you, {new}!",
+		},
+		SEAT_TAKEN = {
+			"Fresh meat! {name} takes {old}'s seat.",
+			"{old} is out of a job. Welcome to the show, {name}!",
+			"Look who crawled in! {name} replaces {old}.",
 		},
 		REVOLVER_HAND = {
 			"{name}, {blanks} blanks and one bullet. Pick someone special.",
@@ -90,12 +99,12 @@ DeathBox.Text = {
 			"{name} ran away with sweaty hands. {next}, catch!",
 		},
 		SAFETY_SAVE = {
-			"Safety! {target} cheats death... this time.",
-			"A Safety card? Boring! {target} lives.",
+			"A Lucky Charm! {target} cheats death... this time.",
+			"Lucky Charm? Boring! {target} lives.",
 		},
 		RICOCHET = {
 			"RICOCHET! The bullet bounces off {target}...",
-			"{target} had a RICOCHET card! Where will it land?",
+			"{target} had a FUNHOUSE MIRROR! Where will it land?",
 		},
 		RICOCHET_HIT = {
 			"...and finds {target}! Oopsie!",
@@ -291,7 +300,7 @@ DeathBox.Text = {
 	-- {step}/{steps} Taste x von y, {left}/{done} Flammen, {count} Karten, {spare}/{kill} Stimmen, {winner}/{loser}, {stealer}/{victim}
 	EVENTS = {
 		revolver = {
-			name = "Revolver",
+			name = "Clown Roulette",
 			tagline = "One gun. One bullet... for now.",
 			rules = REVOLVER_RULES,
 			who = "{name} gets the revolver",
@@ -322,15 +331,15 @@ DeathBox.Text = {
 			},
 		},
 		angry = {
-			name = "Angry Clown",
+			name = "Jack Snaps",
 			tagline = "Jack has run out of patience.",
-			rules = "Jack shoots. Only a Safety or a Ricochet card can help you.",
+			rules = "Jack shoots. Only a Lucky Charm or a Funhouse Mirror can help you.",
 			who = "Jack shoots {name} himself",
 			how = {
 				"No choice, no dodging - Jack aims and shoots.",
-				"Only a SAFETY or RICOCHET card can save you.",
+				"Only a LUCKY CHARM or FUNHOUSE MIRROR card saves you.",
 			},
-			you_actor = "YOU: pray - only a SAFETY or RICOCHET card helps.",
+			you_actor = "YOU: pray - only a LUCKY CHARM or MIRROR card helps.",
 			you_others = "YOU: just watch.",
 			instruction_actor = "Pray.",
 			instruction_others = "Jack aims at {name}...",
@@ -342,12 +351,12 @@ DeathBox.Text = {
 		gallery = {
 			name = "Shooting Gallery",
 			tagline = "Step right up! Three ducks, one clown.",
-			rules = "Jack shoots the chosen one and both neighbours, one after another. Only a Safety or a Ricochet card can help.",
+			rules = "Jack shoots the chosen one and both neighbours, one after another. Only a Lucky Charm or a Funhouse Mirror can help.",
 			who = "{name} and both neighbours are the ducks",
 			how = {
 				"Jack shoots the chosen one and both neighbours.",
 				"One after another - nobody can dodge.",
-				"Only a SAFETY or RICOCHET card can save you.",
+				"Only a LUCKY CHARM or FUNHOUSE MIRROR card saves you.",
 			},
 			you_actor = "YOU: are the big prize. Pray.",
 			you_others = "YOU: sitting next to {name}? You are a target too.",
@@ -360,7 +369,7 @@ DeathBox.Text = {
 			},
 		},
 		knife = {
-			name = "Knife Toss",
+			name = "The Knife Act",
 			tagline = "Jack never misses. Usually.",
 			rules = "Press the keys that appear - fast. One mistake and it sticks.",
 			who = "Jack throws knives at {name}",
@@ -381,7 +390,7 @@ DeathBox.Text = {
 			},
 		},
 		fire = {
-			name = "Fire Breath",
+			name = "Fire Eater",
 			tagline = "Feeling cold? Jack will warm you up.",
 			rules = "Click the jumping flame before you burn.",
 			who = "Jack sets {name} on fire",
@@ -402,7 +411,7 @@ DeathBox.Text = {
 			},
 		},
 		stab = {
-			name = "Stab Your Neighbour",
+			name = "Chop Chop",
 			tagline = "Love thy neighbour. Then stab them.",
 			rules = "Pick the left or right neighbour. The victim may block with one key.",
 			who = "{name} must stab a neighbour",
@@ -426,7 +435,7 @@ DeathBox.Text = {
 			},
 		},
 		vote = {
-			name = "Spare or Eliminate",
+			name = "Cheer or Jeer",
 			tagline = "The audience decides.",
 			rules = "Everyone votes, even the dead. Majority wins, a tie is a coin flip. No card can save you.",
 			who = "The table votes on {name}",
@@ -470,7 +479,7 @@ DeathBox.Text = {
 			},
 		},
 		bomb = {
-			name = "Defuse or Die",
+			name = "Snip the Wire",
 			tagline = "Jack built it himself. With love.",
 			rules = "Read Jack's manual and cut the right wire before the timer hits zero.",
 			who = "Jack gives {name} a bomb",
@@ -514,7 +523,7 @@ DeathBox.Text = {
 			},
 		},
 		splitsteal = {
-			name = "Split or Steal",
+			name = "Share or Snatch",
 			tagline = "Trust is a funny thing.",
 			rules = "Both split: one card each. One steals: they take all the other's cards plus one. Both steal: nothing.",
 			who = "{name} and {name2} make a deal",
@@ -538,7 +547,7 @@ DeathBox.Text = {
 			},
 		},
 		deal = {
-			name = "Card Deal",
+			name = "Party Favors",
 			tagline = "Jack is feeling generous.",
 			rules = "Jack hands out free cards. Nobody dies... this time.",
 			who = "Jack hands out cards",
@@ -558,7 +567,7 @@ DeathBox.Text = {
 			},
 		},
 		choosecard = {
-			name = "Choose a Card",
+			name = "Fortune Teller",
 			tagline = "Pick a card. Any card.",
 			rules = "Keep one of three cards. Choose wisely.",
 			who = "{name} picks a card",
@@ -581,8 +590,8 @@ DeathBox.Text = {
 
 	-- Stage-Zeilen, die in mehreren Events vorkommen (Treffer mit Karten, Abgaenge)
 	STAGE = {
-		RICOCHET = "RICOCHET! The bullet bounces off {target}...",
-		SAFETY = "BANG! A SAFETY card saves {target}!",
+		RICOCHET = "RICOCHET! The bullet bounces off {target}'s mirror...",
+		SAFETY = "BANG! A LUCKY CHARM saves {target}!",
 		OUT = "BANG! {target} is OUT",
 	},
 

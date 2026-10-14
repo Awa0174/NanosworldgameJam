@@ -1,10 +1,14 @@
 -- Server/Commands.lua
 -- Chat-Befehle und Test-Cheats.
 --   Immer aktiv:  /leave (Zuschauer zurueck in den Hub)
---   Nur mit Config.DEBUG_COMMANDS = true: /bots, /start, /stop, /status, /event, /card, /god, /noclip (Taste B), /hub, /sitpos
+--   Nur fuer Admins: /bots, /start, /stop, /status, /event, /card, /god, /noclip (Taste B), /hub, /sitpos
+-- Admin ist, wer in der SERVER-KONSOLE (Pterodactyl) freigeschaltet wurde:  db_admin <name oder id>
+-- (gilt bis zum Verlassen des Servers). Config.DEBUG_COMMANDS = true macht ALLE zu Admins (nur zum Testen!).
 -- Cheats (god, noclip, hub) sind fuer lebende Spieler am Tisch gesperrt. /card ist gerade dort zum Testen da.
 
-DeathBox.Commands = {}
+DeathBox.Commands = {
+	admins = {},   -- player -> true
+}
 
 local Commands = DeathBox.Commands
 local Config = DeathBox.Config
@@ -25,9 +29,13 @@ function Commands.ResetCheats(character)
 	end
 end
 
+function Commands.IsAdmin(player)
+	return Config.DEBUG_COMMANDS == true or (player ~= nil and Commands.admins[player] == true)
+end
+
 -- Darf dieser Spieler gerade cheaten?
 local function CheatCharacter(player)
-	if (not Config.DEBUG_COMMANDS) then return nil end
+	if (not Commands.IsAdmin(player)) then return nil end
 	local match = Lobby.GetMatchOf(player)
 	if (match) then
 		local seat = match:FindSeatByPlayer(player)
@@ -194,7 +202,7 @@ function Commands.Handle(player, message)
 	if (not command) then return false end
 	command = string.lower(command)
 
-	local handler = PUBLIC[command] or (Config.DEBUG_COMMANDS and DEBUG[command])
+	local handler = PUBLIC[command] or (Commands.IsAdmin(player) and DEBUG[command])
 	if (not handler) then return false end
 
 	handler(player, argument)
@@ -204,4 +212,51 @@ end
 -- Taste B kommt vom Client (siehe Client/Index.lua)
 Events.SubscribeRemote("DeathBox:ToggleNoClip", function(player)
 	ToggleNoClip(player)
+end)
+
+-- ===================================================================
+-- Server-Konsole (nur der Server-Betreiber hat Zugriff)
+-- ===================================================================
+
+local function FindPlayer(query)
+	query = tostring(query or "")
+	local id = tonumber(query)
+	local found
+	for _, player in pairs(Player.GetPairs()) do
+		if (id and player:GetID() == id) then return player end
+		if (query ~= "" and string.find(string.lower(player:GetName()), string.lower(query), 1, true)) then
+			if (found) then return nil, "mehrere Spieler passen, bitte genauer oder die ID angeben" end
+			found = player
+		end
+	end
+	if (not found) then return nil, "kein Spieler gefunden" end
+	return found
+end
+
+-- db_admin <name|id>: Admin-Befehle fuer einen Spieler ein- oder ausschalten
+Console.RegisterCommand("db_admin", function(query)
+	local player, err = FindPlayer(query)
+	if (not player) then
+		Console.Warn("[DeathBox] db_admin: %s", err)
+		for _, p in pairs(Player.GetPairs()) do Console.Log("  %d  %s", p:GetID(), p:GetName()) end
+		return
+	end
+	local enabled = not Commands.admins[player]
+	Commands.admins[player] = enabled or nil
+	Events.CallRemote("DeathBox:Admin", player, Reliability.Reliable, enabled)
+	Chat.SendMessage(player, enabled and "Admin commands enabled (/status, /event, /card, /bots, /start, /stop, B = noclip)." or "Admin commands disabled.")
+	Console.Log("[DeathBox] Admin %s: %s", enabled and "an" or "aus", player:GetName())
+end, "DeathBox: Admin-Befehle fuer einen Spieler an/aus", { "name oder id" })
+
+-- db_status: Ueberblick in der Server-Konsole
+Console.RegisterCommand("db_status", function()
+	Console.Log("[DeathBox] Version %s | Warteschlange %d | Tische %d/%d", DeathBox.VERSION, #Lobby.queue, #Lobby.matches, Config.MAX_MATCHES)
+	for _, match in ipairs(Lobby.matches) do
+		Console.Log("  Tisch %d: %s, Runde %d, %d/%d leben, %d Menschen, %d Nachruecker", match.id, match.state, match.round,
+			match:CountAlive(), #match.seats, match:CountHumans(), #match.joiners)
+	end
+end, "DeathBox: Tische und Warteschlange anzeigen", {})
+
+Player.Subscribe("Destroy", function(player)
+	Commands.admins[player] = nil
 end)

@@ -16,6 +16,7 @@ DeathBox.HUD = {
 	                     -- Linksklick schiesst, Maus bleibt gefangen – Client/Aim.lua)
 	cards_open = false,  -- Kartenhand aufgeklappt (Taste C)?
 	pending = {},        -- Aufrufe, die vor "Ready" ankamen
+	choice_guard = nil,  -- Sicherheitsnetz: schliesst eine Abfrage lokal, falls das ChoiceEnd des Servers ausbleibt
 }
 
 local HUD = DeathBox.HUD
@@ -53,6 +54,8 @@ end
 -- Abfrage oeffnen/schliessen. Bei Klick-Abfragen faengt die WebUI die Maus ab.
 -- Bei Tasten-Abfragen (qte) bleibt die Maus aus, die Taste wird unten per KeyDown gelesen.
 local function SetChoiceMode(ask_id, kind)
+	if (HUD.choice_guard and Timer.IsValid(HUD.choice_guard)) then Timer.ClearTimeout(HUD.choice_guard) end
+	HUD.choice_guard = nil
 	local was_aim = (HUD.choice_kind == "aim")
 	HUD.choice_ask = ask_id
 	HUD.choice_kind = ask_id and kind or nil
@@ -176,9 +179,10 @@ function HUD.Create()
 		end
 	end)
 
-	-- Tasten-Abfrage (Knife Toss, Block): W/A/S/D direkt aus dem Spiel lesen
+	-- Tasten-Abfrage (Knife Toss, Block): W/A/S/D direkt aus dem Spiel lesen (nicht, solange der Chat offen ist)
 	Input.Subscribe("KeyDown", function(key_name)
 		if (HUD.choice_kind ~= "qte" or not HUD.choice_ask) then return end
+		if (DeathBox.Aim and DeathBox.Aim.chat_open) then return end
 		local valid = false
 		for _, key in ipairs(DeathBox.Config.QTE_KEYS) do
 			if (key == key_name) then valid = true break end
@@ -196,11 +200,22 @@ function HUD.Destroy()
 	if (HUD.choice_ask) then
 		SetChoiceMode(nil)
 	end
+	if (HUD.choice_guard and Timer.IsValid(HUD.choice_guard)) then Timer.ClearTimeout(HUD.choice_guard) end
+	HUD.choice_guard = nil
+	HUD.cards_open = false
+	Input.SetMouseEnabled(false)   -- nie mit freier Maus zurueckbleiben (Package-Reload)
 	if (HUD.ui) then
 		HUD.ui:Destroy()
 		HUD.ui = nil
 	end
 	HUD.ready = false
+end
+
+-- Taste N: Ausgeschiedene und Nachruecker gehen in die naechste Show (der Server prueft, ob das erlaubt ist)
+function HUD.RequestNextShow()
+	if (DeathBox.World.kind ~= "match") then return end
+	if (DeathBox.Aim and DeathBox.Aim.chat_open) then return end   -- "n" beim Tippen im Chat
+	Events.CallRemote("DeathBox:Leave", Reliability.Reliable)
 end
 
 -- ===================================================================
@@ -214,7 +229,8 @@ Events.SubscribeRemote("DeathBox:Place", function(kind, info_json)
 	ResetMarks()
 	DeathBox.World.Enter(kind, info)
 	CallUI("Place", kind)
-	if (kind == "hub" and HUD.ui) then
+	-- Jeder Ortswechsel (auch von Tisch zu Tisch): offene Abfrage und Kartenhand schliessen, Maus wieder fangen
+	if (HUD.ui) then
 		if (HUD.choice_ask) then SetChoiceMode(nil) end
 		if (HUD.cards_open) then HUD.SetCardsOpen(false) end
 	end
@@ -277,6 +293,14 @@ Events.SubscribeRemote("DeathBox:Choice", function(json)
 	if (HUD.ui) then
 		SetChoiceMode(data.ask, aim and "aim" or data.kind)
 		if (aim) then DeathBox.Aim.Begin(data) end
+		-- Sicherheitsnetz: Kommt das ChoiceEnd nicht (Verbindung, abgebrochenes Event), Abfrage nach Ablauf selbst
+		-- schliessen, damit Maus und Kamera nie haengen bleiben. Der Server hat sie dann laengst entschieden.
+		local seconds = tonumber(data.seconds) or 10
+		local ask = data.ask
+		HUD.choice_guard = Timer.SetTimeout(function()
+			HUD.choice_guard = nil
+			HUD.CloseChoice(ask)
+		end, math.floor((seconds + 3) * 1000))
 	end
 end)
 

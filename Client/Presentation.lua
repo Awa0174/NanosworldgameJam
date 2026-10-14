@@ -1157,6 +1157,22 @@ function Handlers.card_trigger(tent, data)
 	Builder.Particle(Temp(), HeadPoint(tent, data.seat_chair) + Vector(0, 0, 40), "nanos-world::P_Sparks", Vector(0.5, 0.5, 0.5))
 end
 
+-- ---------------------------------------------------------------- Nachruecker
+
+-- Ein Spieler uebernimmt den Platz eines Bots (zu Beginn einer Runde): kurzes Funkeln, Namensschild steigt auf
+function Handlers.seat_taken(tent, data)
+	if (not data.seat_chair) then return end
+	Builder.Particle(Temp(), HeadPoint(tent, data.seat_chair) + Vector(0, 0, 30), "nanos-world::P_Sparks", Vector(0.4, 0.4, 0.4))
+	FloatLabel(tent, data.seat_chair, "NEW: " .. tostring(data.name or "?"), Color(1, 0.82, 0.3), 3.5)
+	Audio.Play("card_deal", 0.7)
+end
+
+-- Nur an den Nachruecker selbst: "Du bist drin" (das HUD zeigt die grosse Zeile)
+function Handlers.you_joined(tent, data)
+	Atmosphere.Flash(Color(1, 0.8, 0.3), 0.35, 0.8)
+	Audio.Play("your_turn", 0.8)
+end
+
 -- ---------------------------------------------------------------- Tod, Ueberleben, Sieg
 
 function Handlers.death(tent, data)

@@ -175,17 +175,27 @@ function Tent.Build(seat_count, jack_yaw)
 	tent.target_spot = Builder.Spot(list, c + Vector(0, 0, h - 60), BLOOD_SPOT, 0, h + 400, 11,
 		{ profile = LightProfile.SpotLight_01 })
 	tent.target_spot2 = Builder.Spot(list, c + Vector(0, 0, h - 60), BLOOD_SPOT, 0, h + 400, 11,
-		{ profile = LightProfile.SpotLight_01 })
+		{ profile = LightProfile.SpotLight_01, shadows = false })   -- selten an (zwei Gewaehlte): Schatten wirft der erste
 
 	-- Gluehbirnen flackern lassen + Stimmung (Lichter dimmen) weich nachfuehren
 	tent.dim = 1
 	tent.dim_target = 1
+	-- Leistung: Flackernde Birnen 20x pro Sekunde, alle anderen nur, wenn sich die Stimmung merklich aendert
+	-- (vorher ~80 Material-Aufrufe in JEDEM Frame, gerade in den spannenden Momenten).
+	local last_dim, next_flicker = 1, 0
 	Builder.AddTicker(list, function(dt, time)
 		tent.dim = tent.dim + (tent.dim_target - tent.dim) * math.min(1, dt * 3)
-		for _, b in ipairs(tent.bulbs) do
-			if (b.mesh:IsValid() and (b.flicker or tent.dim < 0.95)) then
-				local f = b.flicker and (0.55 + 0.45 * math.abs(math.sin(time * 7 + b.phase) * math.sin(time * 13 + b.phase))) or 1
-				b.mesh:SetMaterialColorParameter("Emissive", BULB * (8 * f * tent.dim))
+		if (math.abs(tent.dim - tent.dim_target) < 0.002) then tent.dim = tent.dim_target end
+		local dim_changed = math.abs(tent.dim - last_dim) > 0.01 or (tent.dim == tent.dim_target and tent.dim ~= last_dim)
+		local flicker_now = time >= next_flicker
+		if (flicker_now) then next_flicker = time + Builder.FLICKER_STEP end
+		if (dim_changed) then last_dim = tent.dim end
+		if (dim_changed or flicker_now) then
+			for _, b in ipairs(tent.bulbs) do
+				if (b.mesh:IsValid() and ((b.flicker and flicker_now) or (not b.flicker and dim_changed))) then
+					local f = b.flicker and (0.55 + 0.45 * math.abs(math.sin(time * 7 + b.phase) * math.sin(time * 13 + b.phase))) or 1
+					b.mesh:SetMaterialColorParameter("Emissive", BULB * (8 * f * tent.dim))
+				end
 			end
 		end
 		DeathBox.World.light_dim = tent.dim
@@ -252,7 +262,13 @@ function Tent.UpdateSeats(tent, seats)
 				"nanos-world::Font_Roboto_DistanceField", false)
 			table.insert(tent.list.entities, m.label)
 			m.color = LABEL_COLORS.alive
+			m.name = s.name
 			tent.markers[s.seat] = m
+		end
+		-- Platz hat den Besitzer gewechselt (Nachruecker uebernimmt einen Bot): neues Namensschild
+		if (m.name ~= s.name and m.label:IsValid()) then
+			m.name = s.name
+			m.label:SetText(ShortName(s.name))
 		end
 		if (m.alive and not s.alive) then
 			-- Kerze erlischt

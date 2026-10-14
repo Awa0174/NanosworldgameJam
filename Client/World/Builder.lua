@@ -87,6 +87,10 @@ function Builder.Box(list, center, size, opts)
 	return Builder.Shape(list, "cube", center, size, opts)
 end
 
+-- Flackernde Lichter und Gluehbirnen werden hoechstens so oft neu gesetzt (Sekunden)
+local FLICKER_STEP = 0.05
+Builder.FLICKER_STEP = FLICKER_STEP
+
 -- Punktlicht. opts: flicker (0..1 Staerke), shadows, profile (LightProfile)
 function Builder.Light(list, location, color, intensity, radius, opts)
 	opts = opts or {}
@@ -96,14 +100,16 @@ function Builder.Light(list, location, color, intensity, radius, opts)
 	if (opts.flicker) then
 		local base = intensity
 		local seed = math.random() * 100
+		local next_at = 0
 		Builder.AddTicker(list, function(dt, time)
 			if (not light:IsValid()) then return false end
+			-- 20x pro Sekunde reicht fuer Kerzen/Fackeln (spart bei ~30 Lichtern im Hub viele Engine-Aufrufe pro Frame)
+			if (time < next_at) then return end
+			next_at = time + FLICKER_STEP
 			local k = (DeathBox.World.light_scale or 1) * (DeathBox.World.light_dim or 1)
 			local wobble = math.sin(time * 9 + seed) * 0.5 + math.sin(time * 23 + seed * 2) * 0.3 + (math.random() - 0.5) * 0.4
 			light:SetIntensity(base * k * (1 + wobble * opts.flicker * 0.5))
 		end)
-	else
-		light:SetValue("DB_BaseIntensity", intensity)
 	end
 	light:SetValue("DB_BaseIntensity", intensity)
 	return light
