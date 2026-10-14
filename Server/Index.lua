@@ -1,58 +1,75 @@
 -- Server/Index.lua
 -- Einstiegspunkt auf dem Server: laedt die Module und verbindet sie mit den nanos-world-Events.
--- Die eigentliche Spiellogik steht in GameState.lua.
 
 -- Reihenfolge ist wichtig: spaetere Module benutzen die frueheren
-Package.Require("Arena.lua")
+Package.Require("Instances.lua")
 Package.Require("Characters.lua")
-Package.Require("Table.lua")
 Package.Require("Net.lua")
-Package.Require("Rituals.lua")
-Package.Require("Rituals/Chamber.lua")
-Package.Require("GameState.lua")
-Package.Require("Cheats.lua")
+Package.Require("Cards.lua")
+Package.Require("Events.lua")
+-- Toedliche Events
+Package.Require("Events/Revolver.lua")
+Package.Require("Events/KnifeToss.lua")
+Package.Require("Events/FireBreath.lua")
+Package.Require("Events/Stab.lua")
+Package.Require("Events/AngryClown.lua")
+Package.Require("Events/Gallery.lua")
+Package.Require("Events/Vote.lua")
+Package.Require("Events/Pumpkin.lua")
+Package.Require("Events/Bomb.lua")
+Package.Require("Events/Duel.lua")
+-- Atempausen (niemand stirbt)
+Package.Require("Events/Deal.lua")
+Package.Require("Events/SplitSteal.lua")
+Package.Require("Events/ChooseCard.lua")
+Package.Require("Match.lua")
+Package.Require("Lobby.lua")
+Package.Require("Commands.lua")
+Package.Require("Rescue.lua")
+Package.Require("Diag.lua")      -- Selbstdiagnose der Clients (nur Testmodus) -> deathbox_diag.txt
 
-local Game = DeathBox.Game
-local Characters = DeathBox.Characters
+local Lobby = DeathBox.Lobby
 
 Console.Log("[DeathBox] Server-Package geladen (Version %s)", DeathBox.VERSION)
 
--- Arena sofort bauen, damit sie steht, bevor der erste Spieler spawnt
-DeathBox.Arena.Build()
+-- Ersten Hub sofort bauen, damit er steht, bevor der erste Spieler spawnt
+Lobby.Init()
 
--- Spieler betritt den Server
 Player.Subscribe("Spawn", function(player)
-	Chat.BroadcastMessage("<cyan>" .. player:GetName() .. "</> entered the parlour")
-	Characters.EnsureAlive(player)
-	Game.OnPlayerJoin(player)
+	Lobby.OnPlayerJoin(player)
 end)
 
 -- Spieler verlaesst den Server: zuerst die Spiellogik informieren, dann aufraeumen
 Player.Subscribe("Destroy", function(player)
-	DeathBox.Net.leaving_player = player   -- nicht mehr in der Lobby-Zaehlung beruecksichtigen
-	Game.OnPlayerLeave(player)
-	DeathBox.Net.leaving_player = nil
-	Characters.Remove(player)
-	Chat.BroadcastMessage("<cyan>" .. player:GetName() .. "</> left the parlour")
+	Lobby.OnPlayerLeave(player)
+	DeathBox.Characters.Remove(player)
 end)
 
--- Chat-Befehle abfangen (/start, /bots, /stop, /status, /ritual, Cheats)
+-- Chat: Befehle abfangen, alles andere nur an die eigene Instanz (Lobby.Chat). Die Engine-Nachricht wird
+-- immer unterdrueckt, weil sie an alle Spieler des Servers ginge. Flutschutz: eine Zeile pro CHAT_INTERVAL.
+local last_chat = {}
+
 Chat.Subscribe("PlayerSubmit", function(message, player)
-	if (Game.HandleChatCommand(player, message)) then
+	if (DeathBox.Commands.Handle(player, message)) then
 		return false   -- Befehl nicht als Chat-Nachricht anzeigen
 	end
+	local now, id = Server.GetTime(), player:GetID()
+	if (not last_chat[id] or now - last_chat[id] >= DeathBox.Config.CHAT_INTERVAL * 1000) then
+		last_chat[id] = now
+		Lobby.Chat(player, message)
+	end
+	return false
 end)
 
--- Package wurde (neu) geladen: bereits verbundene Spieler versorgen
+Player.Subscribe("Destroy", function(player)
+	last_chat[player:GetID()] = nil
+end)
+
+-- Package wurde (neu) geladen: bereits verbundene Spieler in den Hub holen
 Package.Subscribe("Load", function()
 	for _, player in pairs(Player.GetPairs()) do
-		Characters.EnsureAlive(player)
+		if (not Lobby.where[player]) then
+			Lobby.OnPlayerJoin(player)
+		end
 	end
-	Game.CheckAutoStart()
-end)
-
--- Package wird entladen (z. B. Reload): laufenden Timer aufraeumen
-Package.Subscribe("Unload", function()
-	Game.ClearTimer()
-	DeathBox.Rituals.Cancel()
 end)

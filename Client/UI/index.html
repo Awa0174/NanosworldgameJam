@@ -2,69 +2,402 @@
 <html lang="en">
 <head>
 	<meta charset="utf-8">
-	<title>The Last Séance – HUD</title>
+	<title>Jack's Last Show – HUD</title>
 	<link rel="stylesheet" href="style.css">
 	<script src="hud.js" defer></script>
 </head>
 <body>
-	<!-- Dunkle Raender, pulsieren wenn jemand gewaehlt wird -->
+	<!-- Schriften vorladen, damit der erste grosse Auftritt nicht in einer Ersatzschrift erscheint -->
+	<div id="font-warm" aria-hidden="true"><span class="f-title">Aa</span><span class="f-shock">Aa</span><span class="f-type">Aa</span></div>
+
+	<!-- Dunkle Raender: Grundton, Puls, Herzschlag waehrend Jack zoegert -->
 	<div id="vignette"></div>
-	<!-- Vollbild-Blitz fuer Schuss / Ward -->
+	<!-- Vollbild-Blitz: Schuss, Feuer, Safety, "DU" -->
 	<div id="flash"></div>
 
-	<!-- Oben: Ritualname, Anweisung, Zeitdocht -->
-	<header id="ritual" class="hidden">
-		<div class="eyebrow">The Last Séance</div>
-		<h1 id="ritual-name"></h1>
-		<p id="ritual-instruction"></p>
-		<div id="wick" class="hidden"><div id="wick-fill"><span class="flame"></span></div></div>
+	<!-- ============================================================ Hub (Friedhof) -->
+	<header id="hub" class="hidden">
+		<div class="kicker"><i class="star"></i><span>Welcome to</span><i class="star"></i></div>
+		<h1 id="hub-title" class="poster-title">Jack's Last Show</h1>
+		<div class="tagline">The greatest show below earth</div>
+		<div id="hub-stats">
+			<div class="stat"><b id="stat-online">0</b><span>online</span></div>
+			<div class="stat"><b id="stat-queued">0</b><span>waiting</span></div>
+			<div class="stat"><b id="stat-tables">0</b><span>shows running</span></div>
+		</div>
 	</header>
 
-	<!-- Revolver-Trommel (nur bei The Chamber) -->
+	<!-- ============================================================ Oben: Regie (PROTOCOL "Klarheit") -->
+	<!-- Jederzeit lesbar: (a) Runde/Phase, (b) was passiert und wer, (c) was DU tun musst, (d) Restzeit.
+	     Genau eine Stage-Zeile; ist eine Abfrage fuer dich offen, ersetzt sie der grosse YOUR-TURN-Hinweis. -->
+	<header id="event" class="hidden">
+		<div id="event-act" class="eyebrow"></div>
+		<div id="stage">
+			<div class="stage-inner">
+				<div id="stage-main"></div>
+				<div id="stage-sub"></div>
+			</div>
+		</div>
+		<div id="turn" class="hidden">
+			<div id="turn-word"></div>
+			<div id="turn-text"></div>
+		</div>
+		<!-- Jack dreht sich: der Name unter dem Suchscheinwerfer -->
+		<div id="spin" class="hidden">
+			<div id="spin-sign"><span class="bulbs left"></span><span id="spin-name"></span><span class="bulbs right"></span></div>
+		</div>
+		<p id="you" class="hidden"><b class="you-tag">You</b><span id="you-text"></span></p>
+		<div id="clock">
+			<div id="wick" class="hidden"><div id="wick-fill"><span class="spark"></span></div></div>
+			<b id="clock-secs"></b>
+		</div>
+	</header>
+
+	<!-- Revolver-Trommel: Kammern (Messing = noch geladen, Russ = abgefeuert), Chance, Halter -->
 	<div id="cylinder" class="hidden">
-		<svg viewBox="-60 -60 120 120" aria-hidden="true">
-			<circle class="cyl-body" r="50"></circle>
+		<svg viewBox="-62 -62 124 124" aria-hidden="true">
+			<defs>
+				<radialGradient id="cyl-steel" cx="38%" cy="30%" r="80%">
+					<stop offset="0" stop-color="#8a8f93"></stop>
+					<stop offset="0.38" stop-color="#43474b"></stop>
+					<stop offset="0.8" stop-color="#1b1d20"></stop>
+					<stop offset="1" stop-color="#0c0d0f"></stop>
+				</radialGradient>
+				<radialGradient id="cyl-brass" cx="34%" cy="30%" r="85%">
+					<stop offset="0" stop-color="#fff2c2"></stop>
+					<stop offset="0.3" stop-color="#e2b551"></stop>
+					<stop offset="0.75" stop-color="#9a6a1c"></stop>
+					<stop offset="1" stop-color="#5a3a0c"></stop>
+				</radialGradient>
+				<radialGradient id="cyl-soot" cx="50%" cy="50%" r="60%">
+					<stop offset="0" stop-color="#050404"></stop>
+					<stop offset="0.6" stop-color="#1c1714"></stop>
+					<stop offset="1" stop-color="#3a2f27"></stop>
+				</radialGradient>
+			</defs>
+			<circle class="cyl-body" r="54"></circle>
+			<circle class="cyl-bevel" r="50"></circle>
 			<g id="cyl-rotor"></g>
-			<circle class="cyl-pin" r="7"></circle>
+			<circle class="cyl-pin" r="9.5"></circle>
+			<circle class="cyl-pin-hole" r="3.2"></circle>
+			<path class="cyl-hammer" d="M-7 -62 L7 -62 L0 -52 Z"></path>
 		</svg>
-		<div id="cyl-odds"></div>
+		<div class="cyl-info">
+			<div id="cyl-odds"></div>
+			<div id="cyl-holder"></div>
+		</div>
 	</div>
 
-	<!-- Rechts: die Runde -->
+	<!-- Schiessbude: drei Blechenten (linker Nachbar, Gewaehlter, rechter Nachbar) -->
+	<div id="gallery" class="hidden">
+		<div id="gal-ducks"></div>
+		<div class="gal-rail"></div>
+	</div>
+
+	<!-- Zwei Spieler gegeneinander (Split or Steal: wer hat gewaehlt, Quick Draw) -->
+	<div id="versus" class="hidden">
+		<div class="vs-side" id="vs-a"><span class="vs-name"></span><span class="vs-state"></span></div>
+		<div class="vs-mid">vs</div>
+		<div class="vs-side" id="vs-b"><span class="vs-name"></span><span class="vs-state"></span></div>
+	</div>
+
+	<!-- ============================================================ Rechts: alle Plaetze -->
 	<aside id="circle" class="hidden">
-		<h2>The Circle</h2>
+		<h2><span>The Circle</span></h2>
 		<ol id="seats"></ol>
+		<div id="circle-count"></div>
 	</aside>
 
-	<!-- Mitte: grosses Ereigniswort (BANG, click, WARDED) -->
-	<div id="word"></div>
-
-	<!-- Mitte: Banner (gewaehlt, Sieger, Start) -->
-	<div id="banner" class="hidden">
-		<div id="banner-small"></div>
-		<div id="banner-big"></div>
-	</div>
-
-	<!-- Auswahl-Ring: Ziele so angeordnet wie am Tisch, du sitzt unten -->
-	<div id="ring" class="hidden">
-		<div id="ring-board">
-			<div id="ring-center">
-				<div id="ring-title">Choose your target</div>
-				<div id="ring-count"></div>
+	<!-- ============================================================ Unten links: Meldungen + eigene Karten -->
+	<div id="dock">
+		<ol id="toasts"></ol>
+		<div id="handbar" class="hidden">
+			<div id="hb-cards"></div>
+			<div id="hb-info">
+				<div id="hb-count"><b></b><span>/ 5</span></div>
+				<div id="hb-hint"><kbd>C</kbd><span>Cards</span></div>
 			</div>
 		</div>
 	</div>
 
-	<!-- Unten: Lobby-Status -->
+	<!-- ============================================================ Mitte: kurze Auftritte -->
+	<!-- Ereigniswort (BANG, *click*, SAFETY, SKIP!, DRAW! ...) -->
+	<div id="word"></div>
+
+	<!-- Jack zeigt auf jemanden -->
+	<div id="pop" class="hidden">
+		<div id="pop-small">Jack picks</div>
+		<div id="pop-name"></div>
+	</div>
+
+	<!-- Event-Karte: alte Zirkus-Eintrittskarte -->
+	<div id="card" class="hidden">
+		<div class="ticket">
+			<div class="ticket-stub"><span>Admit one</span></div>
+			<div class="ticket-body">
+				<div id="card-act"></div>
+				<h2 id="card-name"></h2>
+				<p id="card-tagline"></p>
+				<div class="ornament"><i></i><b></b><i></i></div>
+				<p id="card-who"></p>
+				<ul id="card-how"></ul>
+				<p id="card-you"></p>
+			</div>
+		</div>
+	</div>
+
+	<!-- Rundenende: wer ist raus, wer hat ueberlebt, wie viele sind noch da -->
+	<div id="result" class="hidden">
+		<div class="result-plate">
+			<div id="result-round"></div>
+			<div id="result-main"></div>
+			<div id="result-names"></div>
+			<div id="result-left"></div>
+		</div>
+	</div>
+
+	<!-- Revolver: Zielen mit der Kamera (Client/Aim.lua). Fadenkreuz genau in der Bildmitte = Kamerastrahl -->
+	<div id="aim" class="hidden">
+		<div id="aim-reticle"><i class="ar-ring"></i><i class="ar-tick t"></i><i class="ar-tick r"></i><i class="ar-tick b"></i><i class="ar-tick l"></i><i class="ar-dot"></i></div>
+		<div id="aim-timer" class="countdown"></div>
+		<div id="aim-label">
+			<div id="aim-name"></div>
+			<div id="aim-hint"></div>
+		</div>
+	</div>
+
+	<!-- Split or Steal: beide Karten werden gleichzeitig aufgedeckt -->
+	<div id="reveal" class="hidden">
+		<div class="rv-row">
+			<div class="rv-side" id="rv-a">
+				<div class="rv-name"></div>
+				<div class="rv-card"><div class="rv-back"></div><div class="rv-front"><span class="rv-word"></span></div></div>
+				<div class="rv-gain"></div>
+			</div>
+			<div class="rv-vs">vs</div>
+			<div class="rv-side" id="rv-b">
+				<div class="rv-name"></div>
+				<div class="rv-card"><div class="rv-back"></div><div class="rv-front"><span class="rv-word"></span></div></div>
+				<div class="rv-gain"></div>
+			</div>
+		</div>
+		<div id="rv-verdict"></div>
+	</div>
+
+	<!-- Stempel: ELIMINATED / SURVIVED -->
+	<div id="stamp" class="hidden">
+		<div class="stamp-frame">
+			<div class="stamp-border"></div>
+			<div id="stamp-word"></div>
+			<div id="stamp-name"></div>
+		</div>
+	</div>
+
+	<!-- Siegerplakat (bleibt bis zum Phasenwechsel) -->
+	<div id="winner" class="hidden">
+		<div class="poster">
+			<div class="poster-bulbs"></div>
+			<div class="poster-inner">
+				<div class="poster-kicker"><i class="star"></i><span>Jack's Last Show</span><i class="star"></i></div>
+				<div id="winner-title">The last one standing</div>
+				<div id="winner-name"></div>
+				<div id="winner-sub">survived the show</div>
+			</div>
+		</div>
+	</div>
+
+	<!-- ============================================================ Abfragen (Maus/Tastatur) -->
+	<!-- Zielwahl (Revolver, Messer), Kuerbis weiterwerfen, Kartenziel: Plaetze wie am Tisch, du sitzt unten -->
+	<div id="ring" class="hidden">
+		<div id="ring-board">
+			<div id="ring-center">
+				<div class="turn-tag">Your turn</div>
+				<div id="ring-art" class="hidden"><img alt=""></div>
+				<div id="ring-pumpkin" class="hidden" aria-hidden="true"><i class="pk-stem"></i><i class="pk-face"></i></div>
+				<div id="ring-title">Choose your target</div>
+				<div id="ring-count"></div>
+				<button id="ring-back" class="hidden" type="button">Back to your hand</button>
+			</div>
+		</div>
+	</div>
+
+	<!-- Tasten-Abfrage (Knife Toss, Block, Quick Draw): Schreibmaschinentaste -->
+	<div id="qte" class="hidden">
+		<div id="qte-label"></div>
+		<div id="qte-key"><span id="qte-letter"></span></div>
+		<div id="qte-bar"><div id="qte-fill"><span class="spark"></span></div></div>
+		<div id="qte-steps"></div>
+	</div>
+
+	<!-- Klick-Abfrage (Fire Breath): springende Flamme im Feuerreifen -->
+	<div id="clicker" class="hidden">
+		<button id="flame" type="button" aria-label="Put out the fire">
+			<span class="hoop"></span>
+			<svg class="fire" viewBox="0 0 100 140" aria-hidden="true">
+				<defs>
+					<path id="fl-shape" d="M52 3 C57 21 77 39 81 68 C85 99 72 133 50 134 C28 134 14 112 16 88 C18 66 33 57 37 38 C41 50 43 57 46 62 C48 43 44 22 52 3 Z"></path>
+					<linearGradient id="fl-outer" x1="0" y1="1" x2="0" y2="0">
+						<stop offset="0" stop-color="#ff7a1c"></stop>
+						<stop offset="0.45" stop-color="#e8400e"></stop>
+						<stop offset="0.85" stop-color="#9c1606"></stop>
+						<stop offset="1" stop-color="#6a0a02" stop-opacity="0.6"></stop>
+					</linearGradient>
+					<linearGradient id="fl-mid" x1="0" y1="1" x2="0" y2="0">
+						<stop offset="0" stop-color="#ffd25a"></stop>
+						<stop offset="0.6" stop-color="#ff9a26"></stop>
+						<stop offset="1" stop-color="#ff6a12" stop-opacity="0.8"></stop>
+					</linearGradient>
+					<linearGradient id="fl-inner" x1="0" y1="1" x2="0" y2="0">
+						<stop offset="0" stop-color="#fffef4"></stop>
+						<stop offset="0.7" stop-color="#fff0a8"></stop>
+						<stop offset="1" stop-color="#ffd25a"></stop>
+					</linearGradient>
+					<radialGradient id="fl-glow" cx="50%" cy="62%" r="50%">
+						<stop offset="0" stop-color="#ffb347" stop-opacity="0.75"></stop>
+						<stop offset="0.55" stop-color="#ff6a12" stop-opacity="0.28"></stop>
+						<stop offset="1" stop-color="#ff6a12" stop-opacity="0"></stop>
+					</radialGradient>
+				</defs>
+				<ellipse class="fl-glow" cx="50" cy="92" rx="50" ry="48" fill="url(#fl-glow)"></ellipse>
+				<g class="fl-lick l"><use href="#fl-shape" transform="translate(44 58) scale(-0.5 0.58)" fill="url(#fl-outer)"></use></g>
+				<g class="fl-lick r"><use href="#fl-shape" transform="translate(54 50) scale(0.48 0.64)" fill="url(#fl-outer)"></use></g>
+				<g class="fl-outer"><use href="#fl-shape" fill="url(#fl-outer)"></use></g>
+				<g class="fl-mid"><use href="#fl-shape" transform="translate(16 40) scale(0.68 0.7)" fill="url(#fl-mid)"></use></g>
+				<g class="fl-inner"><use href="#fl-shape" transform="translate(30 76) scale(0.4 0.43)" fill="url(#fl-inner)"></use></g>
+				<g class="fl-embers">
+					<circle cx="38" cy="60" r="1.6"></circle>
+					<circle cx="60" cy="52" r="1.3"></circle>
+					<circle cx="48" cy="40" r="1.1"></circle>
+					<circle cx="66" cy="70" r="1.4"></circle>
+					<circle cx="30" cy="78" r="1.2"></circle>
+				</g>
+			</svg>
+		</button>
+		<div id="clicker-progress">
+			<div id="clicker-pips"></div>
+			<div id="clicker-count"></div>
+		</div>
+	</div>
+
+	<!-- Spare or Eliminate: Abstimmung (gross mit Knoepfen) oder Live-Zaehlung (klein unter dem Eventkopf) -->
+	<section id="vote" class="hidden">
+		<div class="vote-plate">
+			<div class="panel-kicker"><i class="star"></i><span>The audience decides</span><i class="star"></i></div>
+			<div class="vote-q"><span class="q-spare">Spare</span><span class="q-or">or</span><span class="q-kill">Eliminate</span></div>
+			<div id="vote-name"></div>
+			<div id="vote-buttons">
+				<button id="vote-spare" class="vote-btn spare" type="button"><span class="vb-icon"><i class="candle-big"></i></span><span class="vb-word">Spare</span></button>
+				<div id="vote-timer" class="countdown"></div>
+				<button id="vote-kill" class="vote-btn kill" type="button"><span class="vb-icon"><i class="cross-big"></i></span><span class="vb-word">Eliminate</span></button>
+			</div>
+			<div id="vote-tally">
+				<span class="vt-label spare">Spare</span>
+				<span class="vt-n spare" id="vote-spare-n"></span>
+				<div id="vote-bar"><i class="vb-fill spare"></i><i class="vb-fill kill"></i><i class="vb-fill cast"></i><b class="vb-mid"></b></div>
+				<span class="vt-n kill" id="vote-kill-n"></span>
+				<span class="vt-label kill">Eliminate</span>
+			</div>
+			<div id="vote-status"></div>
+		</div>
+	</section>
+
+	<!-- Split or Steal: geheime Wahl gegen einen Partner -->
+	<section id="split" class="hidden">
+		<div class="split-plate">
+			<div class="panel-kicker"><i class="star"></i><span>One deal &middot; two secrets</span><i class="star"></i></div>
+			<div class="split-with"><span class="sw-label">Your deal with</span><span id="split-partner"></span></div>
+			<div id="split-hands"></div>
+			<div id="split-buttons">
+				<button id="split-split" class="split-btn split" type="button"><span class="sb-word">Split</span><span class="sb-sub">share the luck</span></button>
+				<div id="split-timer" class="countdown"></div>
+				<button id="split-steal" class="split-btn steal" type="button"><span class="sb-word">Steal</span><span class="sb-sub">take it all</span></button>
+			</div>
+			<ul id="split-rules">
+				<li><b>Split + split</b><span>a card for each of you</span></li>
+				<li><b>Steal + split</b><span>the thief takes ALL their cards, +1</span></li>
+				<li><b>Steal + steal</b><span>nobody gets a thing</span></li>
+			</ul>
+			<div id="split-status"></div>
+		</div>
+	</section>
+
+	<!-- Choose a Card: drei Karten zur Wahl -->
+	<section id="pick" class="hidden">
+		<div id="pick-head">
+			<div class="turn-tag">Your turn</div>
+			<div class="panel-kicker"><i class="star"></i><span id="pick-hand"></span><i class="star"></i></div>
+			<h2 id="pick-title" class="poster-title">Pick a card. Any card.</h2>
+		</div>
+		<div id="pick-cards"></div>
+		<div id="pick-foot"><span id="pick-note">Jack picks for you when the time runs out</span><div id="pick-timer" class="countdown"></div></div>
+	</section>
+
+	<!-- Defuse or Die: Jacks Handbuch + Bombe mit drei Draehten -->
+	<section id="bomb" class="hidden">
+		<div class="bomb-manual">
+			<div class="bm-head">Defusal Manual</div>
+			<div class="bm-sub">by Jack &middot; page 13</div>
+			<p id="bomb-rule"></p>
+			<div class="bm-foot">Cut ONE wire. Click it.</div>
+		</div>
+		<div class="bomb-box">
+			<div class="bomb-top">
+				<span class="bomb-label">Property of Jack<br>Do not shake</span>
+				<span class="bomb-led"><span id="bomb-led"></span></span>
+			</div>
+			<div id="bomb-wires"></div>
+			<div class="bomb-bottom"><i></i><i></i><i></i></div>
+		</div>
+	</section>
+
+	<!-- ============================================================ Unten -->
+	<!-- Warteschlange / Countdown / Zuschauer -->
 	<div id="lobby" class="hidden">
 		<div id="lobby-text"></div>
 		<div id="lobby-sub"></div>
+		<div id="lobby-note"></div>
 	</div>
 
-	<!-- Unten: Madames Untertitel -->
-	<footer id="madame" class="hidden">
-		<span class="who">Madame</span>
-		<p id="madame-text"></p>
+	<!-- Jacks Untertitel (Schreibmaschine) -->
+	<footer id="jack" class="hidden">
+		<span class="who">Jack</span>
+		<p id="jack-text"><span class="typed"></span><span class="caret"></span><span class="rest"></span></p>
 	</footer>
+
+	<!-- ============================================================ Kartenhand (Taste C) -->
+	<section id="hand" class="hidden">
+		<div id="hand-head">
+			<div class="panel-kicker"><i class="star"></i><span>Your hand</span><i class="star"></i></div>
+			<div id="hand-title"></div>
+			<div id="hand-note"></div>
+		</div>
+		<div id="hand-cards"></div>
+		<button id="hand-close" type="button"><span>Close</span><kbd>C</kbd></button>
+	</section>
+
+	<!-- ============================================================ Showbeginn: Vorhang -->
+	<div id="intro" class="hidden">
+		<div class="curtain left"></div>
+		<div class="curtain right"></div>
+		<div class="valance"></div>
+		<div id="intro-inner">
+			<div id="intro-small"><span class="typed"></span><span class="rest"></span></div>
+			<div id="intro-sign">
+				<span class="bulbs top"></span>
+				<h1 id="intro-title" class="poster-title">Jack's Last Show</h1>
+				<span class="bulbs bottom"></span>
+			</div>
+			<!-- Kurz erklaert, waehrend der Vorhang noch zu ist -->
+			<div id="intro-how">
+				<div class="how-head">How to play</div>
+				<ol>
+					<li>Every round Jack spins and <b>picks a player</b>.</li>
+					<li>The card shows the game &ndash; and <b>what YOU must do</b>.</li>
+					<li>Big red <b>YOUR TURN</b>? Act before the timer runs out.</li>
+					<li>Cards <kbd>C</kbd> can save you. <b>The last one alive wins.</b></li>
+				</ol>
+			</div>
+		</div>
+	</div>
 </body>
 </html>

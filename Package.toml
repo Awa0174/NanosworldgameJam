@@ -1,11 +1,11 @@
 # vault configurations
 [meta]
     # friendly name
-    title =                 "Death Box (Game Jam)"
+    title =                 "Jack's Last Show (Game Jam)"
     # contributors
     author =                "Gluonjustforyou"
     # version
-    version =               "0.5.3"
+    version =               "0.10.0"
 
 # game-mode configurations
 [game_mode]
@@ -13,9 +13,9 @@
     force_no_map_package =  false
     # auto destroy all entities spawned by this package when it unloads
     auto_cleanup =          true
-    # whether to load all level entities on client
+    # whether to load all level entities on client - only enable it if your package needs to use level static meshes entities
     load_level_entities =   false
-    # the game version (major.minor) at the time this package was created
+    # the game version (major.minor) at the time this package was created, for granting compatibility between breaking changes
     compatibility_version = "1.159"
     # packages requirements
     packages_requirements = [
@@ -27,8 +27,11 @@
     ]
     # compatible maps - maps to be highlighted when starting a new game through main menu
     compatible_maps = [
-        "default-blank-map",
+                            "default-empty-map",
     ]
 
 # game-mode custom settings configurations
+# those settings can be configured through new game menu, Config.toml and server command line
+# and can be accessed through Server.GetCustomSettings() method from any package
 [custom_settings]
+    # my_toggle_example = { label = "awesome toggle", type = "boolean", description = "press this!", default = true }

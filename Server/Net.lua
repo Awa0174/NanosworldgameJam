@@ -1,140 +1,169 @@
 -- Server/Net.lua
--- Alles, was zwischen Server und Clients hin- und hergeht, laeuft ueber diese Datei.
+-- Alles, was zwischen Server und Clients hin- und hergeht. Vollstaendige Liste: docs/PROTOCOL.md.
+-- Nachrichten gehen immer nur an die Dimension (Instanz), die sie betreffen.
 --
--- Server -> Client (Remote Events):
---   "DeathBox:State"    JSON-Snapshot des oeffentlichen Spielzustands (an alle)
---   "DeathBox:Say"      Madames Untertitel (an alle)
---   "DeathBox:Fx"       kurzer Effekt: Sound/Anzeige, z. B. "click", "bang", "ward" (an alle)
---   "DeathBox:Choice"   JSON: Auswahl fuer genau einen Spieler (z. B. Ziele im Chamber)
---   "DeathBox:ChoiceEnd"   Auswahl schliessen
+-- Server -> Client:
+--   "DeathBox:Place"     (kind, info) "hub" oder "match": wo der Spieler gerade ist
+--   "DeathBox:Lobby"     JSON: Warteschlange, Countdown, laufende Tische (an einen Hub)
+--   "DeathBox:State"     JSON: oeffentlicher Zustand eines Tisches (an dessen Dimension)
+--   "DeathBox:Say"       Jacks Untertitel
+--   "DeathBox:Fx"        (kind, seat) kurzer HUD-/Sound-Effekt: "click", "bang", "safety", "dodge", ...
+--   "DeathBox:Show"      JSON: Regieanweisung fuer die Praesentation (Jack, Licht, Musik, 3D-Effekte, HUD-Karten)
+--                        Der Client baut daraus alles lokal (Client/Presentation.lua) -> kein Sync-Ruckeln.
+--   "DeathBox:Choice"    JSON: Abfrage fuer genau einen Spieler { ask, event, kind, options, seconds, ... }
+--   "DeathBox:ChoiceEnd" (ask) Abfrage schliessen
+--   "DeathBox:Hand"      JSON: PRIVAT, die eigene Kartenhand { cards = [ { uid, id, rounds_left? } ] }
 --
--- Client -> Server:
---   "DeathBox:Input"         (ritual_id, choice) – wird in Rituals.HandleInput streng geprueft
---   "DeathBox:RequestState"  HUD ist bereit und moechte den aktuellen Zustand
+-- Client -> Server (jede Eingabe wird hier grob und danach im Spiel streng geprueft):
+--   "DeathBox:Input"         (ask_id, choice) – Match:HandleInput / Context:HandleInput
+--   "DeathBox:Aim"           (ask_id, seat) – Revolver-Zielmodus: Zwischenstand der Zielwahl (0 = niemand), gedrosselt
+--   "DeathBox:RequestState"  HUD ist bereit und moechte den aktuellen Zustand (gedrosselt)
+--   "DeathBox:PlayCard"      (uid, target_seat) – Hand.Play (Server/Cards.lua)
 --
 -- Warum JSON? Ein einziges, klar definiertes Format fuer Lua und JavaScript.
--- Der Client reicht den Text unveraendert an die WebUI weiter, dort wird er mit JSON.parse gelesen.
 
-DeathBox.Net = {
-	timer = nil,            -- { total = Sekunden, ends_at = ms } fuer den Zeitbalken im HUD
-	leaving_player = nil,   -- Spieler, der gerade den Server verlaesst (nicht mitzaehlen)
-}
+DeathBox.Net = {}
 
 local Net = DeathBox.Net
 
-local function Now()
+function Net.Now()
 	return Server.GetTime()
 end
 
--- Zeitbalken setzen (seconds = nil entfernt ihn)
-function Net.SetTimer(seconds)
-	if (seconds and seconds > 0) then
-		Net.timer = { total = seconds, ends_at = Now() + seconds * 1000 }
-	else
-		Net.timer = nil
-	end
+-- Zeitanzeige fuer das HUD: { total, ends_at } -> { total, remaining }
+function Net.MakeTimer(seconds)
+	if (not seconds or seconds <= 0) then return nil end
+	return { total = seconds, ends_at = Net.Now() + seconds * 1000 }
 end
 
-local function TimerSnapshot()
-	if (not Net.timer) then return nil end
-	local remaining = math.max(0, (Net.timer.ends_at - Now()) / 1000)
-	return { total = Net.timer.total, remaining = remaining }
+function Net.TimerSnapshot(timer)
+	if (not timer) then return nil end
+	local remaining = math.max(0, (timer.ends_at - Net.Now()) / 1000)
+	return { total = timer.total, remaining = remaining }
 end
 
--- Baut den oeffentlichen Zustand. Enthaelt nur, was ALLE sehen duerfen
--- (z. B. Anzahl Karten, aber nicht welche Karten).
-local function BuildSnapshot()
-	local Game = DeathBox.Game
-	local seats = {}
-
-	local seat_count = #DeathBox.Table.seats
-	for index, seat in ipairs(DeathBox.Table.seats) do
-		-- Winkel des Stuhls am Tisch, damit das HUD die Sitzordnung genauso zeigt wie im Raum
-		local angle = 0
-		if (DeathBox.Arena.built) then
-			local chair = DeathBox.Arena.chairs[DeathBox.Arena.GetChairIndex(index, seat_count)]
-			angle = chair and chair.angle or 0
-		end
-
-		table.insert(seats, {
-			seat = index,
-			angle = angle,
-			name = seat.name,
-			id = seat.player and seat.player:IsValid() and seat.player:GetID() or -1,
-			bot = seat.is_bot,
-			alive = seat.alive,
-			cards = #seat.cards,
-		})
-	end
-
-	local snapshot = {
-		phase = Game.state,
-		seats = seats,
-		turn = Game.current_index,
-		winner = Game.winner_index,
-		timer = TimerSnapshot(),
-		lobby = {
-			players = #DeathBox.Game.GetConnectedPlayers(Net.leaving_player),
-			bots = Game.bot_count,
-			needed = DeathBox.Config.MIN_PLAYERS,
-		},
-		ritual = DeathBox.Rituals.GetPublicState(),
-	}
-	return snapshot
+-- Sagt dem Client, wo er ist. Der Client baut daraufhin den Ort lokal (Friedhof oder Zelt).
+--   kind = "hub" | "match", info = { seat_count = 16, jack_yaw = 0 } (nur bei "match")
+function Net.Place(player, kind, info)
+	if (not player or not player:IsValid()) then return end
+	Events.CallRemote("DeathBox:Place", player, Reliability.Reliable, kind, JSON.stringify(info or {}))
 end
 
--- Schickt den aktuellen Zustand an alle. Wird nach jeder sichtbaren Aenderung aufgerufen.
-function Net.PushState()
-	Events.BroadcastRemote("DeathBox:State", Reliability.Reliable, JSON.stringify(BuildSnapshot()))
+function Net.SendLobby(dimension, data)
+	Events.BroadcastRemoteDimension("DeathBox:Lobby", dimension, Reliability.Reliable, JSON.stringify(data))
 end
 
--- Schickt den Zustand an einen einzelnen Spieler (z. B. direkt nach dem Joinen)
-function Net.SendStateTo(player)
-	Events.CallRemote("DeathBox:State", player, Reliability.Reliable, JSON.stringify(BuildSnapshot()))
+function Net.SendLobbyTo(player, data)
+	Events.CallRemote("DeathBox:Lobby", player, Reliability.Reliable, JSON.stringify(data))
 end
 
--- Madame spricht (Untertitel fuer alle) und zusaetzlich im Chat, damit man es nachlesen kann
-function Net.Say(text)
-	Events.BroadcastRemote("DeathBox:Say", Reliability.Reliable, text)
-	Console.Log("[Madame] %s", text)
+function Net.SendState(dimension, snapshot)
+	Events.BroadcastRemoteDimension("DeathBox:State", dimension, Reliability.Reliable, JSON.stringify(snapshot))
 end
 
--- Kurzer Effekt fuer alle: kind = "click" | "bang" | "ward" | "chosen" | ...
--- seat = betroffener Platz (fuer Hervorhebung im HUD), optional
-function Net.Fx(kind, seat)
-	Events.BroadcastRemote("DeathBox:Fx", Reliability.Reliable, kind, seat or 0)
+function Net.SendStateTo(player, snapshot)
+	Events.CallRemote("DeathBox:State", player, Reliability.Reliable, JSON.stringify(snapshot))
 end
 
--- Oeffnet bei genau einem Spieler eine Auswahl
--- data = { ritual = "chamber", kind = "target", options = { 2, 5, 7 }, seconds = 8 }
+function Net.Say(dimension, text)
+	Events.BroadcastRemoteDimension("DeathBox:Say", dimension, Reliability.Reliable, text)
+end
+
+function Net.Fx(dimension, kind, seat)
+	Events.BroadcastRemoteDimension("DeathBox:Fx", dimension, Reliability.Reliable, kind, seat or 0)
+end
+
+-- Regieanweisung an alle in einer Dimension. data wird um "action" ergaenzt.
+function Net.Show(dimension, action, data)
+	data = data or {}
+	data.action = action
+	Events.BroadcastRemoteDimension("DeathBox:Show", dimension, Reliability.Reliable, JSON.stringify(data))
+end
+
+function Net.ShowTo(player, action, data)
+	if (not player or not player:IsValid()) then return end
+	data = data or {}
+	data.action = action
+	Events.CallRemote("DeathBox:Show", player, Reliability.Reliable, JSON.stringify(data))
+end
+
 function Net.SendChoice(player, data)
 	if (not player or not player:IsValid()) then return end
 	Events.CallRemote("DeathBox:Choice", player, Reliability.Reliable, JSON.stringify(data))
 end
 
-function Net.EndChoice(player)
+function Net.EndChoice(player, ask_id)
 	if (not player or not player:IsValid()) then return end
-	Events.CallRemote("DeathBox:ChoiceEnd", player, Reliability.Reliable)
+	Events.CallRemote("DeathBox:ChoiceEnd", player, Reliability.Reliable, ask_id or 0)
+end
+
+-- Private Kartenhand an genau diesen Spieler
+function Net.SendHand(player, data)
+	if (not player or not player:IsValid()) then return end
+	Events.CallRemote("DeathBox:Hand", player, Reliability.Reliable, JSON.stringify(data))
+end
+
+local function IsInteger(value)
+	return type(value) == "number" and value == math.floor(value) and value >= 0 and value < 2 ^ 31
 end
 
 -- Eingaben vom Client. Hier wird nur der Typ grob geprueft, die eigentliche
--- Pruefung (ist der Spieler dran? gueltige Wahl?) macht Rituals.HandleInput.
-Events.SubscribeRemote("DeathBox:Input", function(player, ritual_id, choice)
-	if (type(ritual_id) ~= "string" or #ritual_id > 32) then return end
-	if (type(choice) ~= "number" and type(choice) ~= "string") then return end
-	DeathBox.Rituals.HandleInput(player, ritual_id, choice)
+-- Pruefung (ist der Spieler gefragt? gueltige Wahl? richtige Abfrage?) macht Match.HandleInput.
+Events.SubscribeRemote("DeathBox:Input", function(player, ask_id, choice)
+	if (type(ask_id) ~= "number") then return end
+	if (type(choice) == "string") then
+		if (#choice > 32) then return end
+	elseif (type(choice) ~= "number") then
+		return
+	end
+	local match = DeathBox.Lobby.GetMatchOf(player)
+	if (match) then
+		match:HandleInput(player, ask_id, choice)
+	end
+end)
+
+-- Revolver-Zielmodus: Zwischenstand der Zielwahl (ask_id, Platz oder 0). Pro Spieler hoechstens
+-- Config.REVOLVER.AIM_RATE Nachrichten pro Sekunde (Token-Eimer, der Rest wird verworfen). Ob der Absender wirklich
+-- der Halter in der Wahl-Phase ist und der Platz erlaubt, prueft Match:HandleAim / Context:HandleAim.
+local aim_budget = {}   -- player_id -> { tokens, at }
+Events.SubscribeRemote("DeathBox:Aim", function(player, ask_id, seat)
+	if (not IsInteger(ask_id) or not IsInteger(seat)) then return end
+	local rate = DeathBox.Config.REVOLVER.AIM_RATE
+	local now, id = Net.Now(), player:GetID()
+	local budget = aim_budget[id]
+	if (not budget) then
+		budget = { tokens = rate, at = now }
+		aim_budget[id] = budget
+	end
+	budget.tokens = math.min(rate, budget.tokens + (now - budget.at) / 1000 * rate)
+	budget.at = now
+	if (budget.tokens < 1) then return end
+	budget.tokens = budget.tokens - 1
+	local match = DeathBox.Lobby.GetMatchOf(player)
+	if (match) then
+		match:HandleAim(player, ask_id, seat)
+	end
+end)
+
+-- Karte ausspielen: uid der Karte, Ziel-Platz (0 = keins). Pruefung in Hand.Play.
+Events.SubscribeRemote("DeathBox:PlayCard", function(player, uid, target_seat)
+	if (not IsInteger(uid) or not IsInteger(target_seat)) then return end
+	if (not DeathBox.Hand.Play(player, uid, target_seat) and DeathBox.Config.DEBUG_COMMANDS) then
+		Console.Warn("[DeathBox] Karte abgelehnt von %s: uid %d, Ziel %d", player:GetName(), uid, target_seat)
+	end
 end)
 
 -- Das HUD meldet sich, sobald es geladen ist. Gedrosselt, damit niemand den Server zuspammen kann.
 local last_request = {}
 Events.SubscribeRemote("DeathBox:RequestState", function(player)
-	local now = Now()
+	local now = Net.Now()
 	local id = player:GetID()
 	if (last_request[id] and now - last_request[id] < 1000) then return end
 	last_request[id] = now
-	Net.SendStateTo(player)
+	DeathBox.Lobby.SendCurrentStateTo(player)
 end)
 
 Player.Subscribe("Destroy", function(player)
 	last_request[player:GetID()] = nil
+	aim_budget[player:GetID()] = nil
 end)
